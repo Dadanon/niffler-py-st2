@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -78,3 +79,10 @@ def login_with_user(page: Page, user: NifflerUser):
     login_field.fill(user.username)
     password_field.fill(user.password)
     page.get_by_role('button').get_by_text('Log in').click()
+
+
+def logout_with_user(page: Page):
+    page.locator('button[aria-label="Menu"]').click()
+    page.locator('ul[role="menu"] li:has-text("Sign out")').click()
+    page.locator('button:has-text("Log out")').click()
+    page.wait_for_url(re.compile('login'), wait_until='load')

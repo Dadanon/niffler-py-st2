@@ -78,7 +78,7 @@ def niffler_add_spend(niffler_registered_user, niffler_spend):
         page.locator('#category').fill(new_spend.category)
         page.locator('input[name="date"]').fill(new_spend.date)
         page.get_by_label('Description').fill(new_spend.description)
-        page.get_by_role('button').get_by_text('Add').click()
+        page.locator('button:has-text("Add")').click()
         page.wait_for_url(re.compile('main'), wait_until='load')
         page.wait_for_selector('table')
         return page, new_spend

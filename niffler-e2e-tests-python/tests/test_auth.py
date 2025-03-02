@@ -1,6 +1,6 @@
 import re
 
-from playwright.sync_api import sync_playwright, expect, Page
+from playwright.sync_api import sync_playwright, expect
 from .functions import *
 
 
@@ -89,5 +89,3 @@ def test_login_success(niffler_registered_user):
         login_with_user(page, registered_user)
 
         expect(page).to_have_url(re.compile('main'))
-
-

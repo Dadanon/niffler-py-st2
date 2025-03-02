@@ -1,7 +1,94 @@
 import re
 
+import pytest
 from playwright.sync_api import sync_playwright, expect, Locator
 from .functions import *
+
+
+@pytest.mark.parametrize('invalid_amount', [0, -200])
+def test_add_spending_invalid_amount(niffler_registered_user, niffler_spend, invalid_amount):
+    """
+    1. Get registered user and page from fixture
+    2. Login
+    3. Click New spending button
+    4. Enter invalid amount
+    5. Select currency
+    6. Fill new category field
+    7. Select date
+    8. Fill description field
+    9. Click Add button
+    10. Check if there is the same page
+    11. Check if there is warning message about amount
+    """
+    with sync_playwright() as p:
+        registered_user, page = niffler_registered_user(p)
+        print(f'username: {registered_user.username}, password: {registered_user.password}')
+        page.goto(NIFFLER_FRONTEND_URL)
+        login_with_user(page, registered_user)
+        page.get_by_role('link').get_by_text('New spending').click()
+
+        expect(page).to_have_url(re.compile('spending'))  # Check if page url relates to spending create
+
+        new_spend: NifflerSpend = niffler_spend()
+        page.get_by_label('Amount').fill(str(invalid_amount))
+
+        # Выбираем валюту из выпадающего списка
+        page.locator('#currency').click()
+        page.locator(f'ul[role="listbox"] >> li:has-text("{new_spend.currency.value["value"]}")').click()
+
+        expect(page.locator('input[name="currency"]')).to_have_value(new_spend.currency.value['value'])
+
+        page.locator('#category').fill(new_spend.category)
+        page.locator('input[name="date"]').fill(new_spend.date)
+        page.get_by_label('Description').fill(new_spend.description)
+        page.get_by_role('button').get_by_text('Add').click()
+
+        expect(page).to_have_url(
+            re.compile('spending'))
+
+        expect(page.locator('label:has-text("Amount")').locator('..').locator('.input__helper-text')).to_be_visible()
+
+
+def test_add_spending_absent_category(niffler_registered_user, niffler_spend):
+    """
+    1. Get registered user and page from fixture
+    2. Login
+    3. Click New spending button
+    4. Enter amount
+    5. Select currency
+    6. Do not fill category field
+    7. Select date
+    8. Fill description field
+    9. Click Add button
+    10. Check if there is the same page
+    11. Check if there is warning message about category
+    """
+    with sync_playwright() as p:
+        registered_user, page = niffler_registered_user(p)
+        print(f'username: {registered_user.username}, password: {registered_user.password}')
+        page.goto(NIFFLER_FRONTEND_URL)
+        login_with_user(page, registered_user)
+        page.get_by_role('link').get_by_text('New spending').click()
+
+        expect(page).to_have_url(re.compile('spending'))  # Check if page url relates to spending create
+
+        new_spend: NifflerSpend = niffler_spend()
+        page.get_by_label('Amount').fill(str(new_spend.amount))
+
+        # Выбираем валюту из выпадающего списка
+        page.locator('#currency').click()
+        page.locator(f'ul[role="listbox"] >> li:has-text("{new_spend.currency.value["value"]}")').click()
+
+        expect(page.locator('input[name="currency"]')).to_have_value(new_spend.currency.value['value'])
+
+        page.locator('input[name="date"]').fill(new_spend.date)
+        page.get_by_label('Description').fill(new_spend.description)
+        page.get_by_role('button').get_by_text('Add').click()
+
+        expect(page).to_have_url(
+            re.compile('spending'))
+
+        expect(page.locator('label:has-text("Category")').locator('..').locator('.input__helper-text')).to_be_visible()
 
 
 def test_add_spending_success(niffler_registered_user, niffler_spend):
@@ -169,5 +256,3 @@ def test_edit_spend(niffler_add_spend, niffler_spend):
 
         new_spend_uuid: str = page.url.split('/')[-1]
         assert new_spend_uuid == spend_uuid  # Проверка, что это именно старая запись с тем же uuid
-
-

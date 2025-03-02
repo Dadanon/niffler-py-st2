@@ -97,7 +97,7 @@ confluentinc/cp-zookeeper  7.3.2            6fe5551964f5   7 years ago     451MB
 #### 3. Создать volume для сохранения данных из БД в docker на вашем компьютере
 
 ```posh
-docker volume create pgdata
+docker volume create niffler-pgdata
 ```
 
 #### 4. Запустить БД, zookeeper и kafka 3-мя последовательными командами:
@@ -317,8 +317,8 @@ server started
 То необходимо выполнить следующие команды в каталоге /postgres :
 
 ```
-sed -i -e 's/\r$//' init-database.sh
-chmod +x init-database.sh
+sed -i -e 's/\r$//' script/init-database.sh
+chmod +x script/init-database.sh
 ```
 
 # Создание своего docker repository для форка Niffler и сборка своих докер контейнеров

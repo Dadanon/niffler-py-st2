@@ -61,7 +61,6 @@ def niffler_spend():
 @pytest.fixture
 def niffler_add_spend(niffler_registered_user, niffler_spend):
     """Create registered user, login and create spend
-    :return: current page and NifflerSpend object
     """
     def _niffler_add_spend(playwright: Playwright):
         registered_user, page = niffler_registered_user(playwright)

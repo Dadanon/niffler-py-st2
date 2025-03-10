@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright, expect
 from .functions import *
 
 
-def test_add_friend(niffler_registered_user):
+def test_add_friend(envs, registered_user):
     """
     Проверка на приглашение друзей
     1. Создать пользователя 1
@@ -22,10 +22,10 @@ def test_add_friend(niffler_registered_user):
     13. Убедиться, что юзер 2 теперь в друзьях
     """
     with sync_playwright() as p:
-        first_user, _ = niffler_registered_user(p)
-        second_user, page = niffler_registered_user(p)
+        first_user, _ = registered_user(p)
+        second_user, page = registered_user(p)
 
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
 
         login_with_user(page, second_user)
 

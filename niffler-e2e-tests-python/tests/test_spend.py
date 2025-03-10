@@ -6,7 +6,7 @@ from .functions import *
 
 
 @pytest.mark.parametrize('invalid_amount', [0, -200])
-def test_add_spending_invalid_amount(niffler_registered_user, niffler_spend, invalid_amount):
+def test_add_spending_invalid_amount(envs, registered_user, spend, invalid_amount):
     """
     1. Get registered user and page from fixture
     2. Login
@@ -21,15 +21,15 @@ def test_add_spending_invalid_amount(niffler_registered_user, niffler_spend, inv
     11. Check if there is warning message about amount
     """
     with sync_playwright() as p:
-        registered_user, page = niffler_registered_user(p)
+        registered_user, page = registered_user(p)
         print(f'username: {registered_user.username}, password: {registered_user.password}')
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
         login_with_user(page, registered_user)
         page.get_by_role('link').get_by_text('New spending').click()
 
         expect(page).to_have_url(re.compile('spending'))  # Check if page url relates to spending create
 
-        new_spend: NifflerSpend = niffler_spend()
+        new_spend: Spend = spend()
         page.get_by_label('Amount').fill(str(invalid_amount))
 
         # Выбираем валюту из выпадающего списка
@@ -49,7 +49,7 @@ def test_add_spending_invalid_amount(niffler_registered_user, niffler_spend, inv
         expect(page.locator('label:has-text("Amount")').locator('..').locator('.input__helper-text')).to_be_visible()
 
 
-def test_add_spending_absent_category(niffler_registered_user, niffler_spend):
+def test_add_spending_absent_category(envs, registered_user, spend):
     """
     1. Get registered user and page from fixture
     2. Login
@@ -64,15 +64,15 @@ def test_add_spending_absent_category(niffler_registered_user, niffler_spend):
     11. Check if there is warning message about category
     """
     with sync_playwright() as p:
-        registered_user, page = niffler_registered_user(p)
+        registered_user, page = registered_user(p)
         print(f'username: {registered_user.username}, password: {registered_user.password}')
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
         login_with_user(page, registered_user)
         page.get_by_role('link').get_by_text('New spending').click()
 
         expect(page).to_have_url(re.compile('spending'))  # Check if page url relates to spending create
 
-        new_spend: NifflerSpend = niffler_spend()
+        new_spend: Spend = spend()
         page.get_by_label('Amount').fill(str(new_spend.amount))
 
         # Выбираем валюту из выпадающего списка
@@ -91,7 +91,7 @@ def test_add_spending_absent_category(niffler_registered_user, niffler_spend):
         expect(page.locator('label:has-text("Category")').locator('..').locator('.input__helper-text')).to_be_visible()
 
 
-def test_add_spending_success(niffler_registered_user, niffler_spend):
+def test_add_spending_success(envs, registered_user, spend):
     """
     1. Get registered user and page from fixture
     2. Login
@@ -106,15 +106,15 @@ def test_add_spending_success(niffler_registered_user, niffler_spend):
     11. Check if fields of this single spend are equal to entered fields
     """
     with sync_playwright() as p:
-        registered_user, page = niffler_registered_user(p)
+        registered_user, page = registered_user(p)
         print(f'username: {registered_user.username}, password: {registered_user.password}')
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
         login_with_user(page, registered_user)
         page.get_by_role('link').get_by_text('New spending').click()
 
         expect(page).to_have_url(re.compile('spending'))  # Check if page url relates to spending create
 
-        new_spend: NifflerSpend = niffler_spend()
+        new_spend: Spend = spend()
         page.get_by_label('Amount').fill(str(new_spend.amount))
 
         # Выбираем валюту из выпадающего списка
@@ -182,7 +182,7 @@ def test_delete_spend(niffler_add_spend):
         assert (len(spend_rows) == 0)
 
 
-def test_edit_spend(niffler_add_spend, niffler_spend):
+def test_edit_spend(niffler_add_spend, spend):
     """
     1. Create registered user, login and create spend, get page and new spend from fixture
     2. Check if there is only one spend in list
@@ -217,7 +217,7 @@ def test_edit_spend(niffler_add_spend, niffler_spend):
 
         spend_uuid: str = page.url.split('/')[-1]
 
-        edited_spend: NifflerSpend = niffler_spend()
+        edited_spend: Spend = spend()
         page.get_by_label('Amount').fill(str(edited_spend.amount))
 
         page.locator('#currency').click()

@@ -1,35 +1,151 @@
-import random
-import re
+from typing import List
 
 import pytest
 from string import ascii_lowercase
 
-from playwright.sync_api import Playwright
+from playwright.sync_api import Playwright, Locator
 
 from .functions import *
+from .config import settings, User, Spend, MIN_AMOUNT, MAX_AMOUNT, Currency, CATEGORY_NAME_LENGTH, get_random_date, \
+    SPEND_CREATE_DATE_FORMAT
 
 
 @pytest.fixture
-def niffler_user():
-    def _niffler_user(username_length: int = 10, password_length: int = 10):
-        niffler_user: NifflerUser = NifflerUser(
+def user():
+    def _user(username_length: int = 10, password_length: int = 10):
+        user: User = User(
             username=''.join(random.choice(ascii_lowercase) for _ in range(username_length)),
             password=''.join(random.choice(ascii_lowercase) for _ in range(password_length))
         )
-        return niffler_user
-    yield _niffler_user
+        return user
+
+    yield _user
+
+
+@pytest.fixture(scope='session')
+def browser(playwright: Playwright):
+    browser = playwright.chromium.launch()
+    yield browser
+    browser.close()
+
+
+@pytest.fixture(scope='class')
+def page(browser):
+    page = browser.new_page()
+    yield page
+    page.close()
+
+
+@dataclass
+class BasePage:
+    page: Page
+
+
+class LoginPage(BasePage):
+    username_field: Locator
+    password_field: Locator
+    login_button: Locator
+    create_account_button: Locator
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+        self.page.goto(settings.AUTH_URL)
+
+        self.username_field = self.page.locator('input[name="username"]')
+        self.password_field = self.page.locator('input[name="password"]')
+        self.login_button = self.page.locator('button[type="submit"]')
+        self.create_account_button = self.page.locator('a[href="register"]')
+
+    def login(self, user: User) -> 'MainPage':
+        self.username_field.fill(user.username)
+        self.password_field.fill(user.password)
+        self.login_button.click()
+        return MainPage(self.page)
+
+    def go_to_registration_page(self) -> 'RegistrationPage':
+        self.create_account_button.click()
+        return RegistrationPage(self.page)
+
+
+class RegistrationPage(BasePage):
+    username_field: Locator
+    password_field: Locator
+    confirm_password_field: Locator
+    signup_button: Locator
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+        self.page.wait_for_url(re.compile('register'), wait_until='load')
+
+        self.username_field = self.page.locator('#username')
+        self.password_field = self.page.locator('#password')
+        self.confirm_password_field = self.page.locator('#passwordSubmit')
+        self.signup_button = self.page.locator('button[type="submit"]')
+
+    def register_user(self, user: User) -> None:
+        self.username_field.fill(user.username)
+        self.password_field.fill(user.password)
+        self.confirm_password_field.fill(user.password)
+        self.signup_button.click()
+
+
+class MainPage(BasePage):
+    new_spending_button: Locator
+    menu_button: Locator
+    search_field: Locator
+    delete_button: Locator
+    spend_list: List[Locator]
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+        self.page.wait_for_url(re.compile('main'), wait_until='load')
+
+        self.new_spending_button = self.page.locator('a[href="/spending"]')
+        self.menu_button = self.page.locator('button[aria-label="menu"]')
+        self.search_field = self.page.locator('input[aria-label="search"]')
+        self.delete_button = self.page.locator('#delete')
+        self.spend_list: List[Locator] = self.page.locator('table tbody tr[role="checkbox"]').all()
+
+    @property
+    def profile_tab(self) -> Locator:
+        self.menu_button.click()
+        return self.page.locator('ul[role="menu"] li:nth-child(1)')
+
+    @property
+    def friends_tab(self) -> Locator:
+        self.menu_button.click()
+        return self.page.locator('ul[role="menu"] li:nth-child(2)')
+
+    @property
+    def all_people_tab(self) -> Locator:
+        self.menu_button.click()
+        return self.page.locator('ul[role="menu"] li:nth-child(3)')
+
+    @property
+    def sign_out_tab(self) -> Locator:
+        self.menu_button.click()
+        return self.page.locator('ul[role="menu"] li:nth-child(4)')
+
+
+class ProfilePage:
+    ...
+
+
+class SpendingPage:
+    ...
 
 
 @pytest.fixture
-def niffler_registered_user(niffler_user):
+def registered_user(envs, user):
     """Get registered Niffler user and page to do not recreate it later"""
-    def _niffler_registered_user(playwright: Playwright):
+
+    def _registered_user(playwright: Playwright):
         browser = playwright.chromium.launch()
         page = browser.new_page()
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
         page.get_by_role('link').get_by_text('Create new account').click()
 
-        new_user = niffler_user()
+        new_user = user()
 
         username_field, password_field, password_confirm_field = page.get_by_label('Username'), page.get_by_label(
             'Password').first, page.get_by_label('Submit password')
@@ -39,14 +155,15 @@ def niffler_registered_user(niffler_user):
         page.get_by_role('button').get_by_text('Sign up').click()
         return new_user, page
 
-    yield _niffler_registered_user
+    yield _registered_user
 
 
 @pytest.fixture
-def niffler_spend():
+def spend():
     """Get mock spend data"""
-    def _niffler_spend():
-        spend: NifflerSpend = NifflerSpend(
+
+    def _spend():
+        spend: Spend = Spend(
             amount=round(random.uniform(MIN_AMOUNT, MAX_AMOUNT), 2),
             currency=random.choice(list(Currency)),
             category=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
@@ -55,20 +172,20 @@ def niffler_spend():
         )
         return spend
 
-    yield _niffler_spend
+    yield _spend
 
 
 @pytest.fixture
-def niffler_add_spend(niffler_registered_user, niffler_spend):
-    """Create registered user, login and create spend
-    """
+def niffler_add_spend(envs, registered_user, spend):
+    """Create registered user, login and create spend"""
+
     def _niffler_add_spend(playwright: Playwright):
-        registered_user, page = niffler_registered_user(playwright)
-        page.goto(NIFFLER_FRONTEND_URL)
-        login_with_user(page, registered_user)
+        new_user, page = registered_user(playwright)
+        page.goto(envs.frontend_url)
+        login_with_user(page, new_user)
         page.get_by_role('link').get_by_text('New spending').click()
 
-        new_spend: NifflerSpend = niffler_spend()
+        new_spend: Spend = spend()
         page.get_by_label('Amount').fill(str(new_spend.amount))
 
         page.locator('#currency').click()

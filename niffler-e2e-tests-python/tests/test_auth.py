@@ -2,9 +2,10 @@ import re
 
 from playwright.sync_api import sync_playwright, expect
 from .functions import *
+from .config import settings
 
 
-def test_login_error(niffler_user):
+def test_login_error(envs, user):
     """
     1. Go to main page
     2. Check if page is redirected
@@ -14,17 +15,17 @@ def test_login_error(niffler_user):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
 
-        expect(page).to_have_url(re.compile(NIFFLER_AUTH_URL))  # Check redirection
-        new_user = niffler_user()
+        expect(page).to_have_url(re.compile(settings.AUTH_URL))  # Check redirection
+        new_user = user()
 
         login_with_user(page, new_user)
 
         expect(page).to_have_url(re.compile('error'))
 
 
-def test_register_success(niffler_user):
+def test_register_success(envs, user):
     """
     1. Go to main page
     2. Click register button
@@ -35,10 +36,10 @@ def test_register_success(niffler_user):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
         page.get_by_role('link').get_by_text('Create new account').click()
 
-        new_user = niffler_user()
+        new_user = user()
 
         username_field, password_field, password_confirm_field = page.get_by_label('Username'), page.get_by_label('Password').first, page.get_by_label('Submit password')
         username_field.fill(new_user.username)
@@ -49,7 +50,7 @@ def test_register_success(niffler_user):
         expect(page.get_by_role('link').get_by_text('Sign in')).to_be_visible()
 
 
-def test_register_error(niffler_user):
+def test_register_error(envs, user):
     """
     1. Go to main page
     2. Click register button
@@ -60,10 +61,10 @@ def test_register_error(niffler_user):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(NIFFLER_FRONTEND_URL)
+        page.goto(envs.frontend_url)
         page.get_by_role('link').get_by_text('Create new account').click()
 
-        new_user = niffler_user(username_length=2, password_length=2)
+        new_user = user(username_length=2, password_length=2)
 
         username_field, password_field, password_confirm_field = page.get_by_label('Username'), page.get_by_label('Password').first, page.get_by_label('Submit password')
         username_field.fill(new_user.username)
@@ -74,7 +75,7 @@ def test_register_error(niffler_user):
         expect(page.get_by_role('link').get_by_text('Sign in')).not_to_be_visible()
 
 
-def test_login_success(niffler_registered_user):
+def test_login_success(envs, registered_user):
     """
     1. Get registered user and page from fixture
     2. Go to main page (it will be redirected, already checked id test_login_error)
@@ -83,8 +84,8 @@ def test_login_success(niffler_registered_user):
     """
     # INFO: we have already tested registration in other test so we only have to use already registered user from fixture
     with sync_playwright() as p:
-        registered_user, page = niffler_registered_user(p)
-        page.goto(NIFFLER_FRONTEND_URL)
+        registered_user, page = registered_user(p)
+        page.goto(envs.frontend_url)
 
         login_with_user(page, registered_user)
 

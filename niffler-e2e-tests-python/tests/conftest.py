@@ -29,11 +29,20 @@ def browser(playwright: Playwright):
     browser.close()
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture
 def page(browser):
     page = browser.new_page()
     yield page
     page.close()
+
+
+@pytest.fixture
+def main_page(page, user):
+    login_page = LoginPage(page)
+    registration_page = login_page.go_to_registration_page()
+    new_user = user()
+    registration_page.register_user(new_user)
+    return login_page.login(new_user)
 
 
 @dataclass
@@ -60,10 +69,12 @@ class LoginPage(BasePage):
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.login_button.click()
+        self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
 
     def go_to_registration_page(self) -> 'RegistrationPage':
         self.create_account_button.click()
+        self.page.wait_for_url(re.compile('register'))
         return RegistrationPage(self.page)
 
 
@@ -75,18 +86,22 @@ class RegistrationPage(BasePage):
 
     def __init__(self, page: Page):
         super().__init__(page)
-        self.page.wait_for_url(re.compile('register'), wait_until='load')
 
         self.username_field = self.page.locator('#username')
         self.password_field = self.page.locator('#password')
         self.confirm_password_field = self.page.locator('#passwordSubmit')
         self.signup_button = self.page.locator('button[type="submit"]')
 
-    def register_user(self, user: User) -> None:
+    def register_user(self, user: User) -> LoginPage:
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.confirm_password_field.fill(user.password)
         self.signup_button.click()
+        sign_in_button: Locator = self.page.locator('a[class="form_sign-in"]')
+        sign_in_button.wait_for()
+        sign_in_button.click()
+        self.page.wait_for_url(re.compile('login'))
+        return LoginPage(self.page)
 
 
 class MainPage(BasePage):
@@ -95,36 +110,41 @@ class MainPage(BasePage):
     search_field: Locator
     delete_button: Locator
     spend_list: List[Locator]
+    profile_menu: Locator
 
     def __init__(self, page: Page):
         super().__init__(page)
-        self.page.wait_for_url(re.compile('main'), wait_until='load')
 
         self.new_spending_button = self.page.locator('a[href="/spending"]')
         self.menu_button = self.page.locator('button[aria-label="menu"]')
         self.search_field = self.page.locator('input[aria-label="search"]')
         self.delete_button = self.page.locator('#delete')
         self.spend_list: List[Locator] = self.page.locator('table tbody tr[role="checkbox"]').all()
+        self.profile_menu = self.page.locator('ul[role="menu"]')
+
+    def open_menu(self) -> None:
+        if not self.profile_menu.is_visible():
+            self.menu_button.click()
+
+    def get_menu_item(self, index: int) -> Locator:
+        self.open_menu()
+        return self.page.locator(f'ul[role="menu"] li:nth-child({index})')
 
     @property
     def profile_tab(self) -> Locator:
-        self.menu_button.click()
-        return self.page.locator('ul[role="menu"] li:nth-child(1)')
+        return self.get_menu_item(1)
 
     @property
     def friends_tab(self) -> Locator:
-        self.menu_button.click()
-        return self.page.locator('ul[role="menu"] li:nth-child(2)')
+        return self.get_menu_item(2)
 
     @property
     def all_people_tab(self) -> Locator:
-        self.menu_button.click()
-        return self.page.locator('ul[role="menu"] li:nth-child(3)')
+        return self.get_menu_item(3)
 
     @property
     def sign_out_tab(self) -> Locator:
-        self.menu_button.click()
-        return self.page.locator('ul[role="menu"] li:nth-child(4)')
+        return self.get_menu_item(4)
 
 
 class ProfilePage:

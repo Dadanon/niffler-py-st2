@@ -10,6 +10,8 @@ from .config import settings, User, Spend, MIN_AMOUNT, MAX_AMOUNT, Currency, CAT
     SPEND_CREATE_DATE_FORMAT
 
 
+# Mock data
+
 @pytest.fixture
 def user():
     def _user(username_length: int = 10, password_length: int = 10):
@@ -21,6 +23,25 @@ def user():
 
     yield _user
 
+
+@pytest.fixture
+def spend():
+    """Get mock spend data"""
+
+    def _spend():
+        spend: Spend = Spend(
+            amount=round(random.uniform(MIN_AMOUNT, MAX_AMOUNT), 2),
+            currency=random.choice(list(Currency)),
+            category=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
+            date=get_random_date().strftime(SPEND_CREATE_DATE_FORMAT),
+            description=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
+        )
+        return spend
+
+    yield _spend
+
+
+# Base fixtures
 
 @pytest.fixture(scope='session')
 def browser(playwright: Playwright):
@@ -36,14 +57,7 @@ def page(browser):
     page.close()
 
 
-@pytest.fixture
-def main_page(page, user):
-    login_page = LoginPage(page)
-    registration_page = login_page.go_to_registration_page()
-    new_user = user()
-    registration_page.register_user(new_user)
-    return login_page.login(new_user)
-
+# Page object
 
 @dataclass
 class BasePage:
@@ -105,12 +119,12 @@ class RegistrationPage(BasePage):
 
 
 class MainPage(BasePage):
-    new_spending_button: Locator
-    menu_button: Locator
-    search_field: Locator
-    delete_button: Locator
-    spend_list: List[Locator]
-    profile_menu: Locator
+    new_spending_button: Locator  # Кнопка новой траты
+    menu_button: Locator  # Кнопка меню с аватарой
+    search_field: Locator  # Поле поиска по тратам
+    delete_button: Locator  # Кнопка удаления трат
+    spend_list: List[Locator]  # Список трат
+    profile_menu: Locator  # Выпадающее меню по нажатию кнопки меню
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -128,7 +142,9 @@ class MainPage(BasePage):
 
     def get_menu_item(self, index: int) -> Locator:
         self.open_menu()
-        return self.page.locator(f'ul[role="menu"] li:nth-child({index})')
+        return self.profile_menu.locator(f'li:nth-child({index})')
+
+    # INFO: computed properties block
 
     @property
     def profile_tab(self) -> Locator:
@@ -146,53 +162,48 @@ class MainPage(BasePage):
     def sign_out_tab(self) -> Locator:
         return self.get_menu_item(4)
 
-
-class ProfilePage:
-    ...
+    @property
+    def log_out_button(self) -> Locator:
+        self.sign_out_tab.click()
+        return self.page.locator('button:has-text("Log out")')
 
 
 class SpendingPage:
+    # TODO: ...
     ...
 
 
+# Advanced fixtures and also page fixtures
+
 @pytest.fixture
-def registered_user(envs, user):
-    """Get registered Niffler user and page to do not recreate it later"""
-
-    def _registered_user(playwright: Playwright):
-        browser = playwright.chromium.launch()
-        page = browser.new_page()
-        page.goto(envs.frontend_url)
-        page.get_by_role('link').get_by_text('Create new account').click()
-
-        new_user = user()
-
-        username_field, password_field, password_confirm_field = page.get_by_label('Username'), page.get_by_label(
-            'Password').first, page.get_by_label('Submit password')
-        username_field.fill(new_user.username)
-        password_field.fill(new_user.password)
-        password_confirm_field.fill(new_user.password)
-        page.get_by_role('button').get_by_text('Sign up').click()
-        return new_user, page
-
-    yield _registered_user
+def registered_user(page, user) -> User:
+    login_page = LoginPage(page)
+    registration_page = login_page.go_to_registration_page()
+    new_user = user()
+    registration_page.register_user(new_user)
+    return new_user
 
 
 @pytest.fixture
-def spend():
-    """Get mock spend data"""
+def login_page(page) -> 'LoginPage':
+    return LoginPage(page)
 
-    def _spend():
-        spend: Spend = Spend(
-            amount=round(random.uniform(MIN_AMOUNT, MAX_AMOUNT), 2),
-            currency=random.choice(list(Currency)),
-            category=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
-            date=get_random_date().strftime(SPEND_CREATE_DATE_FORMAT),
-            description=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
-        )
-        return spend
 
-    yield _spend
+@pytest.fixture
+def registration_page(login_page) -> 'RegistrationPage':
+    return login_page.go_to_registration_page()
+
+
+@pytest.fixture
+def main_page(login_page, registered_user) -> 'MainPage':
+    return login_page.login(registered_user)
+
+
+
+
+
+class ProfilePage:
+    ...
 
 
 @pytest.fixture

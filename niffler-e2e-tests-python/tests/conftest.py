@@ -1,4 +1,3 @@
-import re
 from typing import List
 
 import pytest
@@ -44,7 +43,7 @@ def spend():
 
 # Base fixtures
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='session', autouse=True)
 def browser(playwright: Playwright):
     browser = playwright.chromium.launch()
     yield browser
@@ -80,10 +79,14 @@ class LoginPage(BasePage):
         self.login_button = self.page.locator('button[type="submit"]')
         self.create_account_button = self.page.locator('a[href="register"]')
 
-    def login(self, user: User) -> 'MainPage':
+    def login_with_error(self, user: User) -> None:
+        """Try to login with unregistered credentials"""
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.login_button.click()
+
+    def login(self, user: User) -> 'MainPage':
+        self.login_with_error(user)
         self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
 

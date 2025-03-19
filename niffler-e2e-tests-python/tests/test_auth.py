@@ -1,28 +1,25 @@
 import re
 
+import pytest
 from playwright.sync_api import sync_playwright, expect
 from .functions import *
 from .config import settings
 
 
-def test_login_error(envs, user):
+@pytest.mark.active
+def test_login_error(login_page, user):
     """
-    1. Go to main page
-    2. Check if page is redirected
-    2. Enter invalid credentials
-    3. Get login error
+    Try to login with unregistered credentials and get error
     """
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(envs.frontend_url)
+    # Arrange
+    new_user = user()
+    new_login_page = login_page
 
-        expect(page).to_have_url(re.compile(settings.AUTH_URL))  # Check redirection
-        new_user = user()
+    # Act
+    new_login_page.login_with_error(new_user)
 
-        login_with_user(page, new_user)
-
-        expect(page).to_have_url(re.compile('error'))
+    # Assert
+    expect(new_login_page.page).to_have_url(re.compile('error'))
 
 
 def test_register_success(envs, user):

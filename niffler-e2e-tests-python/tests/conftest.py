@@ -1,3 +1,4 @@
+import re
 from typing import List
 
 import pytest
@@ -136,6 +137,16 @@ class MainPage(BasePage):
         self.spend_list: List[Locator] = self.page.locator('table tbody tr[role="checkbox"]').all()
         self.profile_menu = self.page.locator('ul[role="menu"]')
 
+    def go_to_new_spending_page(self) -> 'NewSpendingPage':
+        self.new_spending_button.click()
+        self.page.wait_for_url(re.compile('spending'))
+        return NewSpendingPage(self.page)
+
+    def go_to_profile_page(self) -> 'ProfilePage':
+        self.profile_tab.click()
+        self.page.wait_for_url(re.compile('profile'))
+        return ProfilePage(self.page)
+
     def open_menu(self) -> None:
         if not self.profile_menu.is_visible():
             self.menu_button.click()
@@ -168,9 +179,67 @@ class MainPage(BasePage):
         return self.page.locator('button:has-text("Log out")')
 
 
-class SpendingPage:
-    # TODO: ...
-    ...
+class NewSpendingPage(BasePage):
+    amount_field: Locator
+    currency_field: Locator
+    category_field: Locator
+    date_field: Locator
+    description_field: Locator
+
+    cancel_button: Locator
+    add_button: Locator
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+
+        self.amount_field = self.page.locator('#amount')
+        self.currency_field = self.page.locator('#currency')
+        self.category_field = self.page.locator('#category')
+        self.date_field = self.page.locator('#:re:')
+        self.description_field = self.page.locator('#description')
+        self.cancel_button = self.page.locator('#cancel')
+        self.add_button = self.page.locator('#save')
+
+    def add_spend(self, spend: Spend) -> 'MainPage':
+        self.amount_field.fill(str(spend.amount))
+        self.currency_field.click()
+        self.page.locator(f'ul[role="listbox"] >> li[data-value={spend.currency.value["value"]}').click()
+        self.category_field.fill(spend.category)
+        self.date_field.fill(spend.date)
+        self.description_field.fill(spend.description)
+        self.add_button.click()
+        self.page.wait_for_url(re.compile('main'))
+        return MainPage(self.page)
+
+    def cancel_add_spend(self) -> 'MainPage':
+        self.cancel_button.click()
+        self.page.wait_for_url(re.compile('main'))
+        return MainPage(self.page)
+
+
+class ProfilePage(BasePage):
+    username_field: Locator
+    name_field: Locator
+    save_changes_button: Locator
+    new_category_field: Locator
+    categories_list: List[Locator]
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+
+        self.username_field = self.page.locator('#username')
+        self.name_field = self.page.locator('#name')
+        self.save_changes_button = self.page.locator('#:r7:')
+        self.new_category_field = self.page.locator('#category')
+        self.categories_list = self.page.locator('.css-17u3xlq').all()
+
+    def change_name(self, name: str) -> None:
+        self.name_field.fill(name)
+        self.save_changes_button.click()
+
+    def add_category(self, category: str) -> None:
+        self.new_category_field.fill(category)
+        self.page.keyboard.press('Enter')
 
 
 # Advanced fixtures and also page fixtures
@@ -185,49 +254,25 @@ def registered_user(page, user) -> User:
 
 
 @pytest.fixture
-def login_page(page) -> 'LoginPage':
+def login_page(page) -> LoginPage:
     return LoginPage(page)
 
 
 @pytest.fixture
-def registration_page(login_page) -> 'RegistrationPage':
+def registration_page(login_page) -> RegistrationPage:
     return login_page.go_to_registration_page()
 
 
 @pytest.fixture
-def main_page(login_page, registered_user) -> 'MainPage':
+def main_page(login_page, registered_user) -> MainPage:
     return login_page.login(registered_user)
 
 
-
-
-
-class ProfilePage:
-    ...
+@pytest.fixture
+def new_spending_page(main_page) -> NewSpendingPage:
+    return main_page.go_to_new_spending_page()
 
 
 @pytest.fixture
-def niffler_add_spend(envs, registered_user, spend):
-    """Create registered user, login and create spend"""
-
-    def _niffler_add_spend(playwright: Playwright):
-        new_user, page = registered_user(playwright)
-        page.goto(envs.frontend_url)
-        login_with_user(page, new_user)
-        page.get_by_role('link').get_by_text('New spending').click()
-
-        new_spend: Spend = spend()
-        page.get_by_label('Amount').fill(str(new_spend.amount))
-
-        page.locator('#currency').click()
-        page.locator(f'ul[role="listbox"] >> li:has-text("{new_spend.currency.value["value"]}")').click()
-
-        page.locator('#category').fill(new_spend.category)
-        page.locator('input[name="date"]').fill(new_spend.date)
-        page.get_by_label('Description').fill(new_spend.description)
-        page.locator('button:has-text("Add")').click()
-        page.wait_for_url(re.compile('main'), wait_until='load')
-        page.wait_for_selector('table')
-        return page, new_spend
-
-    yield _niffler_add_spend
+def profile_page(main_page) -> ProfilePage:
+    return main_page.go_to_profile_page()

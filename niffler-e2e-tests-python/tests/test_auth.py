@@ -22,54 +22,33 @@ def test_login_error(login_page, user):
     expect(new_login_page.page).to_have_url(re.compile('error'))
 
 
-def test_register_success(envs, user):
+@pytest.mark.active
+def test_register_success(registration_page, user):
     """
-    1. Go to main page
-    2. Click register button
-    3. Register with valid credentials (username field length 10, password field length 10)
-    4. Click submit button
-    5. Check if sign in button is visible - it means successful registration
+    Try to register successfully
     """
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(envs.frontend_url)
-        page.get_by_role('link').get_by_text('Create new account').click()
+    # Arrange
+    new_user = user()
+    new_registration_page = registration_page
 
-        new_user = user()
-
-        username_field, password_field, password_confirm_field = page.get_by_label('Username'), page.get_by_label('Password').first, page.get_by_label('Submit password')
-        username_field.fill(new_user.username)
-        password_field.fill(new_user.password)
-        password_confirm_field.fill(new_user.password)
-        page.get_by_role('button').get_by_text('Sign up').click()
-
-        expect(page.get_by_role('link').get_by_text('Sign in')).to_be_visible()
+    # Act
+    new_registration_page.register_user(new_user)
 
 
-def test_register_error(envs, user):
+@pytest.mark.active
+def test_register_error(registration_page, user):
     """
-    1. Go to main page
-    2. Click register button
-    3. Register with invalid credentials (username field length 2, password field length 2)
-    4. Click submit button
-    5. Check if sign in button is visible - it means successful registration
+    Try to register unsuccessfully
     """
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(envs.frontend_url)
-        page.get_by_role('link').get_by_text('Create new account').click()
+    # Arrange
+    new_user = user(username_length=2, password_length=2)
+    new_registration_page = registration_page
 
-        new_user = user(username_length=2, password_length=2)
+    # Act
+    new_registration_page.arrange_register_user(new_user)
 
-        username_field, password_field, password_confirm_field = page.get_by_label('Username'), page.get_by_label('Password').first, page.get_by_label('Submit password')
-        username_field.fill(new_user.username)
-        password_field.fill(new_user.password)
-        password_confirm_field.fill(new_user.password)
-        page.get_by_role('button').get_by_text('Sign up').click()
-
-        expect(page.get_by_role('link').get_by_text('Sign in')).not_to_be_visible()
+    # Assert
+    expect(new_registration_page.page.get_by_role('link').get_by_text('Sign in')).not_to_be_visible()
 
 
 def test_login_success(envs, registered_user):

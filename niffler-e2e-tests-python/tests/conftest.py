@@ -3,7 +3,7 @@ from typing import List
 import pytest
 from string import ascii_lowercase
 
-from playwright.sync_api import Playwright, Locator
+from playwright.sync_api import Playwright, Locator, expect
 
 from .functions import *
 from .config import settings, User, Spend, MIN_AMOUNT, MAX_AMOUNT, Currency, CATEGORY_NAME_LENGTH, get_random_date, \
@@ -63,6 +63,9 @@ def page(browser):
 class BasePage:
     page: Page
 
+    def check_elements(self):
+        raise NotImplementedError('Метод не переопределён')
+
 
 class LoginPage(BasePage):
     username_field: Locator
@@ -77,7 +80,20 @@ class LoginPage(BasePage):
         self.username_field = self.page.locator('input[name="username"]')
         self.password_field = self.page.locator('input[name="password"]')
         self.login_button = self.page.locator('button[type="submit"]')
-        self.create_account_button = self.page.locator('a[href="register"]')
+        self.create_account_button = self.page.locator('a[href="/register"]')
+
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.username_field, "Username field"),
+            (self.password_field, "Password field"),
+            (self.login_button, "Login button"),
+            (self.create_account_button, "Create account button")
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
 
     def login_with_error(self, user: User) -> None:
         """Try to login with unregistered credentials"""
@@ -110,11 +126,27 @@ class RegistrationPage(BasePage):
         self.confirm_password_field = self.page.locator('#passwordSubmit')
         self.signup_button = self.page.locator('button[type="submit"]')
 
-    def register_user(self, user: User) -> LoginPage:
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.username_field, "Username field"),
+            (self.password_field, "Password field"),
+            (self.confirm_password_field, "Confirm password field"),
+            (self.signup_button, "Signup button")
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
+
+    def arrange_register_user(self, user: User) -> None:
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.confirm_password_field.fill(user.password)
         self.signup_button.click()
+
+    def register_user(self, user: User) -> LoginPage:
+        self.arrange_register_user(user)
         sign_in_button: Locator = self.page.locator('a[class="form_sign-in"]')
         sign_in_button.wait_for()
         sign_in_button.click()
@@ -139,6 +171,24 @@ class MainPage(BasePage):
         self.delete_button = self.page.locator('#delete')
         self.spend_list: List[Locator] = self.page.locator('table tbody tr[role="checkbox"]').all()
         self.profile_menu = self.page.locator('ul[role="menu"]')
+
+    def check_elements(self):
+        elements = [
+            (self.new_spending_button, "New spending button"),
+            (self.menu_button, "Menu button"),
+            (self.search_field, "Search field"),
+            (self.delete_button, "Delete button"),
+            *[(spend, "Spend") for spend in self.spend_list],
+            (self.profile_menu, "Profile menu"),
+            (self.profile_tab, "Profile tab"),
+            (self.friends_tab, "Friends tab"),
+            (self.all_people_tab, "All people tab"),
+            (self.sign_out_tab, "Sign out tab"),
+            (self.log_out_button, "Log out button"),
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
 
     def go_to_new_spending_page(self) -> 'NewSpendingPage':
         self.new_spending_button.click()
@@ -203,6 +253,22 @@ class NewSpendingPage(BasePage):
         self.cancel_button = self.page.locator('#cancel')
         self.add_button = self.page.locator('#save')
 
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.amount_field, "Amount field"),
+            (self.currency_field, "Currency field"),
+            (self.category_field, "Category field"),
+            (self.date_field, "Date field"),
+            (self.description_field, "Description field"),
+            (self.cancel_button, "Cancel button"),
+            (self.add_button, "Add button"),
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
+
     def add_spend(self, spend: Spend) -> 'MainPage':
         self.amount_field.fill(str(spend.amount))
         self.currency_field.click()
@@ -235,6 +301,20 @@ class ProfilePage(BasePage):
         self.save_changes_button = self.page.locator('#:r7:')
         self.new_category_field = self.page.locator('#category')
         self.categories_list = self.page.locator('.css-17u3xlq').all()
+
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.username_field, "Username field"),
+            (self.name_field, "Name field"),
+            (self.save_changes_button, "Save changes button"),
+            (self.new_category_field, "new category field"),
+            *[(category, "Category") for category in self.categories_list],
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
 
     def change_name(self, name: str) -> None:
         self.name_field.fill(name)

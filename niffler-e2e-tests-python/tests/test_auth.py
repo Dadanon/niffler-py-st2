@@ -1,9 +1,7 @@
 import re
 
 import pytest
-from playwright.sync_api import sync_playwright, expect
-from .functions import *
-from .config import settings
+from playwright.sync_api import expect
 
 
 @pytest.mark.active
@@ -51,18 +49,14 @@ def test_register_error(registration_page, user):
     expect(new_registration_page.page.get_by_role('link').get_by_text('Sign in')).not_to_be_visible()
 
 
-def test_login_success(envs, registered_user):
+@pytest.mark.active
+def test_login_success(login_page, registered_user):
     """
-    1. Get registered user and page from fixture
-    2. Go to main page (it will be redirected, already checked id test_login_error)
-    3. Fill fields with valid credentials and enter
-    4. Check if page is main now
+    Try to login successfully with registered credentials
     """
-    # INFO: we have already tested registration in other test so we only have to use already registered user from fixture
-    with sync_playwright() as p:
-        registered_user, page = registered_user(p)
-        page.goto(envs.frontend_url)
+    # Arrange
+    new_login_page = login_page
+    new_user = registered_user
 
-        login_with_user(page, registered_user)
-
-        expect(page).to_have_url(re.compile('main'))
+    # Act
+    new_login_page.login(new_user)

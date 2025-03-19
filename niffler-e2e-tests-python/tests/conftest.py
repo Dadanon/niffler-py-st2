@@ -200,6 +200,16 @@ class MainPage(BasePage):
         self.page.wait_for_url(re.compile('profile'))
         return ProfilePage(self.page)
 
+    def go_to_friends_page(self) -> 'FriendsPage':
+        self.friends_tab.click()
+        self.page.wait_for_url(re.compile('people/friends'))
+        return FriendsPage(self.page)
+
+    def go_to_all_people_page(self) -> 'AllPeoplePage':
+        self.all_people_tab.click()
+        self.page.wait_for_url(re.compile('people/all'))
+        return AllPeoplePage(self.page)
+
     def open_menu(self) -> None:
         if not self.profile_menu.is_visible():
             self.menu_button.click()
@@ -325,6 +335,122 @@ class ProfilePage(BasePage):
         self.page.keyboard.press('Enter')
 
 
+class FriendsPage(BasePage):
+    search_field: Locator
+    request_list: List[Locator]
+    friend_list: List[Locator]
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+
+        self.search_field = self.page.locator('input[aria-label="search"]')
+        self.request_list = self.page.locator('#requests tr').all()
+        self.friend_list = self.page.locator('#friends tr').all()
+
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.search_field, "Search field"),
+            *[(request, "Request") for request in self.request_list],
+            *[(friend, "Friend") for friend in self.friend_list],
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
+
+    def get_corresponding_request(self, username: str) -> Locator:
+        """Получить соответствующий запрос от username"""
+        if len(self.request_list) == 0:
+            raise AssertionError(f'Request list is empty')
+
+        corresponding_request: Locator | None = next((request for request in self.request_list if request.locator(
+            '.MuiTypography-body1').text_content() == username), None)
+        if corresponding_request is None:
+            raise AssertionError(f'No such user with username {username} in request list')
+
+        return corresponding_request
+
+    def accept_request(self, username: str) -> None:
+        """Принять приглашение в друзья от username"""
+        corresponding_request: Locator = self.get_corresponding_request(username)
+        accept_button: Locator = corresponding_request.locator('button:has-text("Accept")')
+        accept_button.click()
+
+    def decline_request(self, username: str) -> None:
+        """Отклонить приглашение в друзья от username"""
+        corresponding_request: Locator = self.get_corresponding_request(username)
+        decline_button: Locator = corresponding_request.locator('button:has-text("Decline")')
+        decline_button.click()
+
+        decline_confirm_button: Locator = self.page.locator('div[role="dialog"] button:has-text("Decline")')
+
+        # INFO: should the string below be in page class? Answer me plz if there is a better way to handle it...
+        expect(decline_confirm_button).to_be_visible()
+
+        decline_confirm_button.click()
+
+    def unfriend(self, username: str) -> None:
+        """Удалить username из друзей"""
+        if len(self.friend_list) == 0:
+            raise AssertionError(f'Friend list is empty')
+
+        corresponding_friend: Locator | None = next((friend for friend in self.friend_list if
+                                                     friend.locator('.MuiTypography-body1').text_content() == username),
+                                                    None)
+        if corresponding_friend is None:
+            raise AssertionError(f'No such user with username {username} in friend list')
+
+        unfriend_button: Locator = corresponding_friend.locator('button:has-text("Unfriend")')
+        unfriend_button.click()
+
+        confirm_unfriend_button: Locator = self.page.locator('div[role="dialog"] button:has-text("Delete")')
+
+        # INFO: should the string below be in page class? Answer me plz if there is a better way to handle it...
+        expect(confirm_unfriend_button).to_be_visible()
+
+        confirm_unfriend_button.click()
+
+
+class AllPeoplePage(BasePage):
+    search_field: Locator
+    people_list: List[Locator]
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+
+        self.search_field = self.page.locator('input[aria-label="search"]')
+        self.people_list = self.page.locator('#all tr').all()
+
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.search_field, "Search field"),
+            *[(user, "User") for user in self.people_list],
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
+
+    def get_corresponding_user(self, username: str) -> Locator:
+        """Получить пользователя с username для приглашения"""
+        if len(self.people_list) == 0:
+            raise AssertionError(f'People list is empty')
+
+        corresponding_user: Locator = next((user for user in self.people_list if user.locator('.MuiTypography-body1').text_content() == username), None)
+        if corresponding_user is None:
+            raise AssertionError(f'No such user with username {username} in people list')
+
+        return corresponding_user
+
+    def send_invitation(self, username: str) -> None:
+        """Отправить приглашение в друзья пользователю с username"""
+        corresponding_user: Locator = self.get_corresponding_user(username)
+        add_friend_button: Locator = corresponding_user.locator('button:has-text("Add friend")')
+        add_friend_button.click()
+
+
 # Advanced fixtures and also page fixtures
 
 @pytest.fixture
@@ -359,3 +485,13 @@ def new_spending_page(main_page) -> NewSpendingPage:
 @pytest.fixture
 def profile_page(main_page) -> ProfilePage:
     return main_page.go_to_profile_page()
+
+
+@pytest.fixture
+def friends_page(main_page) -> FriendsPage:
+    return main_page.go_to_friends_page()
+
+
+@pytest.fixture
+def all_people_page(main_page) -> AllPeoplePage:
+    return main_page.go_to_all_people_page()

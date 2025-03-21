@@ -22,7 +22,6 @@ def test_add_spending_invalid_amount(envs, registered_user, spend, invalid_amoun
     """
     with sync_playwright() as p:
         registered_user, page = registered_user(p)
-        print(f'username: {registered_user.username}, password: {registered_user.password}')
         page.goto(envs.frontend_url)
         login_with_user(page, registered_user)
         page.get_by_role('link').get_by_text('New spending').click()
@@ -65,7 +64,6 @@ def test_add_spending_absent_category(envs, registered_user, spend):
     """
     with sync_playwright() as p:
         registered_user, page = registered_user(p)
-        print(f'username: {registered_user.username}, password: {registered_user.password}')
         page.goto(envs.frontend_url)
         login_with_user(page, registered_user)
         page.get_by_role('link').get_by_text('New spending').click()
@@ -107,7 +105,6 @@ def test_add_spending_success(envs, registered_user, spend):
     """
     with sync_playwright() as p:
         registered_user, page = registered_user(p)
-        print(f'username: {registered_user.username}, password: {registered_user.password}')
         page.goto(envs.frontend_url)
         login_with_user(page, registered_user)
         page.get_by_role('link').get_by_text('New spending').click()

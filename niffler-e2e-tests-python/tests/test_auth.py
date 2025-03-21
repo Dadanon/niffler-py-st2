@@ -11,10 +11,10 @@ def test_login_error(login_page, user):
     """
     # Arrange
     new_user = user()
-    new_login_page = login_page
+    new_login_page = login_page()
 
     # Act
-    new_login_page.login_with_error(new_user)
+    new_login_page.arrange_login(new_user)
 
     # Assert
     expect(new_login_page.page).to_have_url(re.compile('error'))
@@ -55,8 +55,8 @@ def test_login_success(login_page, registered_user):
     Try to login successfully with registered credentials
     """
     # Arrange
-    new_login_page = login_page
-    new_user = registered_user
+    new_login_page = login_page()
+    new_user = registered_user()
 
     # Act
     new_login_page.login(new_user)

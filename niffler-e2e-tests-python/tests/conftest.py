@@ -20,14 +20,12 @@ def user():
             password=''.join(random.choice(ascii_lowercase) for _ in range(password_length))
         )
         return user
-
     yield _user
 
 
 @pytest.fixture
 def spend():
     """Get mock spend data"""
-
     def _spend():
         spend: Spend = Spend(
             amount=round(random.uniform(MIN_AMOUNT, MAX_AMOUNT), 2),
@@ -37,7 +35,6 @@ def spend():
             description=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
         )
         return spend
-
     yield _spend
 
 
@@ -53,6 +50,7 @@ def browser(playwright: Playwright):
 @pytest.fixture
 def page(browser):
     page = browser.new_page()
+    page.set_default_timeout(10000)
     yield page
     page.close()
 
@@ -95,14 +93,15 @@ class LoginPage(BasePage):
         for element, name in elements:
             expect(element, f"{name} should be visible").to_be_visible()
 
-    def login_with_error(self, user: User) -> None:
-        """Try to login with unregistered credentials"""
+    def arrange_login(self, user: User) -> None:
+        """Prepare to login without expect"""
+        self.page.screenshot(path='0.png')
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.login_button.click()
 
     def login(self, user: User) -> 'MainPage':
-        self.login_with_error(user)
+        self.arrange_login(user)
         self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
 
@@ -166,10 +165,9 @@ class MainPage(BasePage):
         super().__init__(page)
 
         self.new_spending_button = self.page.locator('a[href="/spending"]')
-        self.menu_button = self.page.locator('button[aria-label="menu"]')
+        self.menu_button = self.page.locator('button[aria-label="Menu"]')
         self.search_field = self.page.locator('input[aria-label="search"]')
         self.delete_button = self.page.locator('#delete')
-        self.spend_list: List[Locator] = self.page.locator('table tbody tr[role="checkbox"]').all()
         self.profile_menu = self.page.locator('ul[role="menu"]')
 
     def check_elements(self):
@@ -221,20 +219,24 @@ class MainPage(BasePage):
     # INFO: computed properties block
 
     @property
+    def spend_list(self):
+        return self.page.locator('table tbody tr[role="checkbox"]').all()
+
+    @property
     def profile_tab(self) -> Locator:
         return self.get_menu_item(1)
 
     @property
     def friends_tab(self) -> Locator:
-        return self.get_menu_item(2)
-
-    @property
-    def all_people_tab(self) -> Locator:
         return self.get_menu_item(3)
 
     @property
-    def sign_out_tab(self) -> Locator:
+    def all_people_tab(self) -> Locator:
         return self.get_menu_item(4)
+
+    @property
+    def sign_out_tab(self) -> Locator:
+        return self.get_menu_item(6)
 
     @property
     def log_out_button(self) -> Locator:
@@ -307,12 +309,18 @@ class ProfilePage(BasePage):
         super().__init__(page)
 
         self.username_field = self.page.locator('#username')
-        self.name_field = self.page.locator('#name')
         self.save_changes_button = self.page.locator('#:r7:')
         self.new_category_field = self.page.locator('#category')
-        self.categories_list = self.page.locator('.css-17u3xlq').all()
 
         self.check_elements()
+
+    @property
+    def name_field(self) -> Locator:
+        return self.page.locator('#name')
+
+    @property
+    def categories_list(self) -> List[Locator]:
+        return self.page.locator('.css-17u3xlq').all()
 
     def check_elements(self):
         elements = [
@@ -344,10 +352,16 @@ class FriendsPage(BasePage):
         super().__init__(page)
 
         self.search_field = self.page.locator('input[aria-label="search"]')
-        self.request_list = self.page.locator('#requests tr').all()
-        self.friend_list = self.page.locator('#friends tr').all()
 
         self.check_elements()
+
+    @property
+    def request_list(self) -> List[Locator]:
+        return self.page.locator('#requests tr').all()
+
+    @property
+    def friend_list(self) -> List[Locator]:
+        return self.page.locator('#friends tr').all()
 
     def check_elements(self):
         elements = [
@@ -376,6 +390,9 @@ class FriendsPage(BasePage):
         corresponding_request: Locator = self.get_corresponding_request(username)
         accept_button: Locator = corresponding_request.locator('button:has-text("Accept")')
         accept_button.click()
+
+        new_friend: Locator | None = next((friend for friend in self.friend_list if friend.locator('.MuiTypography-body1').text_content() == username), None)
+        assert new_friend is not None
 
     def decline_request(self, username: str) -> None:
         """Отклонить приглашение в друзья от username"""
@@ -420,9 +437,12 @@ class AllPeoplePage(BasePage):
         super().__init__(page)
 
         self.search_field = self.page.locator('input[aria-label="search"]')
-        self.people_list = self.page.locator('#all tr').all()
 
         self.check_elements()
+
+    @property
+    def people_list(self) -> List[Locator]:
+        return self.page.locator('#all tr').all()
 
     def check_elements(self):
         elements = [
@@ -438,11 +458,23 @@ class AllPeoplePage(BasePage):
         if len(self.people_list) == 0:
             raise AssertionError(f'People list is empty')
 
-        corresponding_user: Locator = next((user for user in self.people_list if user.locator('.MuiTypography-body1').text_content() == username), None)
-        if corresponding_user is None:
-            raise AssertionError(f'No such user with username {username} in people list')
+        self.search_field.fill(username)
+        self.page.keyboard.press('Enter')
+        self.page.wait_for_load_state('networkidle')
 
-        return corresponding_user
+        print(f'People length: {len(self.people_list)}')
+
+        for user in self.people_list:
+            current_username = user.locator('.MuiTypography-body1').text_content()
+            if current_username == username:
+                return user
+
+        raise AssertionError(f'No such user with username {username} in people list')
+        # corresponding_user: Locator = next((user for user in self.people_list if user.locator('.MuiTypography-body1').text_content() == username), None)
+        # if corresponding_user is None:
+        #     raise AssertionError(f'No such user with username {username} in people list')
+        #
+        # return corresponding_user
 
     def send_invitation(self, username: str) -> None:
         """Отправить приглашение в друзья пользователю с username"""
@@ -450,48 +482,74 @@ class AllPeoplePage(BasePage):
         add_friend_button: Locator = corresponding_user.locator('button:has-text("Add friend")')
         add_friend_button.click()
 
+        expect(corresponding_user.locator('span:has-text("Waiting...")'))
+
 
 # Advanced fixtures and also page fixtures
 
 @pytest.fixture
-def registered_user(page, user) -> User:
-    login_page = LoginPage(page)
-    registration_page = login_page.go_to_registration_page()
-    new_user = user()
-    registration_page.register_user(new_user)
-    return new_user
+def registered_user(page, user):
+    def _registered_user() -> User:
+        login_page = LoginPage(page)
+        registration_page = login_page.go_to_registration_page()
+        new_user = user()
+        registration_page.register_user(new_user)
+        print(f'New user registered: {new_user.__dict__}')
+        return new_user
+    yield _registered_user
 
 
 @pytest.fixture
-def login_page(page) -> LoginPage:
-    return LoginPage(page)
+def login_page(page):
+    def _login_page() -> LoginPage:
+        return LoginPage(page)
+    yield _login_page
 
 
 @pytest.fixture
-def registration_page(login_page) -> RegistrationPage:
-    return login_page.go_to_registration_page()
+def registration_page(login_page):
+    def _registration_page() -> RegistrationPage:
+        new_login_page = login_page()
+        return new_login_page.go_to_registration_page()
+    yield _registration_page
 
 
 @pytest.fixture
-def main_page(login_page, registered_user) -> MainPage:
-    return login_page.login(registered_user)
+def main_page(login_page, registered_user):
+    def _main_page() -> MainPage:
+        new_user = registered_user()
+        new_login_page = login_page()
+        return new_login_page.login(new_user)
+    yield _main_page
 
 
 @pytest.fixture
-def new_spending_page(main_page) -> NewSpendingPage:
-    return main_page.go_to_new_spending_page()
+def new_spending_page(main_page):
+    def _new_spending_page() -> NewSpendingPage:
+        new_main_page = main_page()
+        return new_main_page.go_to_new_spending_page()
+    yield _new_spending_page
 
 
 @pytest.fixture
-def profile_page(main_page) -> ProfilePage:
-    return main_page.go_to_profile_page()
+def profile_page(main_page):
+    def _profile_page() -> ProfilePage:
+        new_main_page = main_page()
+        return new_main_page.go_to_profile_page()
+    yield _profile_page
 
 
 @pytest.fixture
-def friends_page(main_page) -> FriendsPage:
-    return main_page.go_to_friends_page()
+def friends_page(main_page):
+    def _friends_page() -> FriendsPage:
+        new_main_page = main_page()
+        return new_main_page.go_to_friends_page()
+    yield _friends_page
 
 
 @pytest.fixture
-def all_people_page(main_page) -> AllPeoplePage:
-    return main_page.go_to_all_people_page()
+def all_people_page(main_page):
+    def _all_people_page() -> AllPeoplePage:
+        new_main_page = main_page()
+        return new_main_page.go_to_all_people_page()
+    yield _all_people_page

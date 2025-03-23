@@ -27,7 +27,7 @@ def test_register_success(registration_page, user):
     """
     # Arrange
     new_user = user()
-    new_registration_page = registration_page
+    new_registration_page = registration_page()
 
     # Act
     new_registration_page.register_user(new_user)
@@ -40,7 +40,7 @@ def test_register_error(registration_page, user):
     """
     # Arrange
     new_user = user(username_length=2, password_length=2)
-    new_registration_page = registration_page
+    new_registration_page = registration_page()
 
     # Act
     new_registration_page.arrange_register_user(new_user)

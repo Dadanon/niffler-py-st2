@@ -1,13 +1,12 @@
+import re
 from typing import List
 
 import pytest
 from string import ascii_lowercase
 
-from playwright.sync_api import Playwright, Locator, expect
+from playwright.sync_api import Playwright, Locator, expect, Page
 
-from .functions import *
-from .config import settings, User, Spend, MIN_AMOUNT, MAX_AMOUNT, Currency, CATEGORY_NAME_LENGTH, get_random_date, \
-    SPEND_CREATE_DATE_FORMAT
+from .config import *
 
 
 # Mock data
@@ -95,7 +94,6 @@ class LoginPage(BasePage):
 
     def arrange_login(self, user: User) -> None:
         """Prepare to login without expect"""
-        self.page.screenshot(path='0.png')
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.login_button.click()
@@ -160,6 +158,8 @@ class MainPage(BasePage):
     delete_button: Locator  # Кнопка удаления трат
     spend_list: List[Locator]  # Список трат
     profile_menu: Locator  # Выпадающее меню по нажатию кнопки меню
+    delete_confirm_dialog: Locator
+    delete_confirm_button: Locator
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -167,8 +167,35 @@ class MainPage(BasePage):
         self.new_spending_button = self.page.locator('a[href="/spending"]')
         self.menu_button = self.page.locator('button[aria-label="Menu"]')
         self.search_field = self.page.locator('input[aria-label="search"]')
-        self.delete_button = self.page.locator('#delete')
         self.profile_menu = self.page.locator('ul[role="menu"]')
+
+    def get_nth_spend(self, index: int) -> Spend:
+        nth_spend_cells: List[Locator] = self.get_spend_cells(index)
+        amount, currency_str = nth_spend_cells[2].locator('span').text_content().strip().split(' ')
+        currency = next(cur for cur in list(Currency) if cur.value['sign'] == currency_str)
+        return Spend(
+            category=nth_spend_cells[1].locator('span').text_content(),
+            amount=float(amount),
+            currency=Currency(currency),
+            description=nth_spend_cells[3].locator('span').text_content(),
+            date=nth_spend_cells[4].locator('span').text_content(),
+        )
+
+    def get_spend_cells(self, index: int) -> List[Locator]:
+        if len(self.spend_list) <= index < 0:
+            raise AssertionError(f'Указан некорректный индекс траты в списке трат: {index}')
+        nth_spend: Locator = self.spend_list[index]
+        return nth_spend.locator('td').all()
+
+    def select_spend_in_list(self, index: int) -> None:
+        spend_cells = self.get_spend_cells(index)
+        spend_cells[0].get_by_role('checkbox').click()
+
+    def edit_spend_in_list(self, index: int) -> 'EditSpendingPage':
+        spend_cells = self.get_spend_cells(index)
+        spend_cells[-1].locator('button[aria-label="Edit spending"]').click()
+        self.page.wait_for_url(re.compile('spending'))
+        return EditSpendingPage(self.page)
 
     def check_elements(self):
         elements = [
@@ -219,6 +246,11 @@ class MainPage(BasePage):
     # INFO: computed properties block
 
     @property
+    def delete_button(self):
+        """Делаем пропом, потому что у нее меняется состояние - disabled / enabled"""
+        return self.page.locator('#delete')
+
+    @property
     def spend_list(self):
         return self.page.locator('table tbody tr[role="checkbox"]').all()
 
@@ -243,6 +275,14 @@ class MainPage(BasePage):
         self.sign_out_tab.click()
         return self.page.locator('button:has-text("Log out")')
 
+    @property
+    def delete_confirm_dialog(self):
+        return self.page.get_by_role('dialog')
+
+    @property
+    def delete_confirm_button(self):
+        return self.delete_confirm_dialog.locator('button:has-text("Delete")')
+
 
 class NewSpendingPage(BasePage):
     amount_field: Locator
@@ -260,7 +300,7 @@ class NewSpendingPage(BasePage):
         self.amount_field = self.page.locator('#amount')
         self.currency_field = self.page.locator('#currency')
         self.category_field = self.page.locator('#category')
-        self.date_field = self.page.locator('#:re:')
+        self.date_field = self.page.locator('input[name="date"]')
         self.description_field = self.page.locator('#description')
         self.cancel_button = self.page.locator('#cancel')
         self.add_button = self.page.locator('#save')
@@ -281,18 +321,98 @@ class NewSpendingPage(BasePage):
         for element, name in elements:
             expect(element, f"{name} should be visible").to_be_visible()
 
-    def add_spend(self, spend: Spend) -> 'MainPage':
+    @property
+    def amount_helper(self) -> Locator:
+        return self.page.locator('#amount + .input__helper-text')
+
+    @property
+    def category_helper(self) -> Locator:
+        return self.page.locator('#category + .input__helper-text')
+
+    def arrange_add_spend(self, spend: Spend) -> None:
         self.amount_field.fill(str(spend.amount))
         self.currency_field.click()
-        self.page.locator(f'ul[role="listbox"] >> li[data-value={spend.currency.value["value"]}').click()
+        self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency.value["value"]}"]').click()
         self.category_field.fill(spend.category)
         self.date_field.fill(spend.date)
         self.description_field.fill(spend.description)
         self.add_button.click()
+
+    def add_spend(self, spend: Spend) -> 'MainPage':
+        self.arrange_add_spend(spend)
         self.page.wait_for_url(re.compile('main'))
+        self.page.wait_for_timeout(1000)  # FIXME: как правильно дождаться страницы со списком трат?
         return MainPage(self.page)
 
     def cancel_add_spend(self) -> 'MainPage':
+        self.cancel_button.click()
+        self.page.wait_for_url(re.compile('main'))
+        return MainPage(self.page)
+
+
+class EditSpendingPage(BasePage):
+    amount_field: Locator
+    currency_field: Locator
+    category_field: Locator
+    date_field: Locator
+    description_field: Locator
+
+    cancel_button: Locator
+    save_changes_button: Locator
+    spend_uuid: str
+
+    def __init__(self, page: Page):
+        super().__init__(page)
+
+        self.amount_field = self.page.locator('#amount')
+        self.currency_field = self.page.locator('#currency')
+        self.category_field = self.page.locator('#category')
+        self.date_field = self.page.locator('input[name="date"]')
+        self.description_field = self.page.locator('#description')
+        self.cancel_button = self.page.locator('#cancel')
+        self.save_changes_button = self.page.locator('#save')
+        self.spend_uuid = self.page.url.split('/')[-1]
+
+        self.check_elements()
+
+    def check_elements(self):
+        elements = [
+            (self.amount_field, "Amount field"),
+            (self.currency_field, "Currency field"),
+            (self.category_field, "Category field"),
+            (self.date_field, "Date field"),
+            (self.description_field, "Description field"),
+            (self.cancel_button, "Cancel button"),
+            (self.save_changes_button, "Save changes button"),
+        ]
+
+        for element, name in elements:
+            expect(element, f"{name} should be visible").to_be_visible()
+
+    @property
+    def amount_helper(self) -> Locator:
+        return self.page.locator('#amount + .input__helper-text')
+
+    @property
+    def category_helper(self) -> Locator:
+        return self.page.locator('#category + .input__helper-text')
+
+    def arrange_edit_spend(self, spend: Spend) -> None:
+        self.amount_field.fill(str(spend.amount))
+        self.currency_field.click()
+        self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency.value["value"]}"]').click()
+        self.category_field.fill(spend.category)
+        self.date_field.fill(spend.date)
+        self.description_field.fill(spend.description)
+        self.save_changes_button.click()
+
+    def edit_spend(self, spend: Spend) -> 'MainPage':
+        self.arrange_edit_spend(spend)
+        self.page.wait_for_url(re.compile('main'))
+        self.page.wait_for_timeout(1000)  # FIXME: как правильно дождаться страницы со списком трат?
+        return MainPage(self.page)
+
+    def cancel_edit_spend(self) -> 'MainPage':
         self.cancel_button.click()
         self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
@@ -309,7 +429,7 @@ class ProfilePage(BasePage):
         super().__init__(page)
 
         self.username_field = self.page.locator('#username')
-        self.save_changes_button = self.page.locator('#:r7:')
+        self.save_changes_button = self.page.locator('button[type="submit"]')
         self.new_category_field = self.page.locator('#category')
 
         self.check_elements()
@@ -390,7 +510,7 @@ class FriendsPage(BasePage):
         corresponding_request: Locator = self.get_corresponding_request(username)
         accept_button: Locator = corresponding_request.locator('button:has-text("Accept")')
         accept_button.click()
-
+        self.page.wait_for_timeout(1000)  # INFO: костыль, а как можно по другому?
         new_friend: Locator | None = next((friend for friend in self.friend_list if friend.locator('.MuiTypography-body1').text_content() == username), None)
         assert new_friend is not None
 
@@ -483,6 +603,7 @@ class AllPeoplePage(BasePage):
         add_friend_button.click()
 
         expect(corresponding_user.locator('span:has-text("Waiting...")'))
+
 
 
 # Advanced fixtures and also page fixtures

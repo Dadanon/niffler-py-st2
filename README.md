@@ -236,6 +236,8 @@ WSDL сервиса niffler-userdata доступен по адресу: http://
 - auth:      127.0.0.1 auth.niffler.dc
 - gateway:   127.0.0.1 gateway.niffler.dc
 
+Или для Windows изменить файл hosts (находится в C:\Windows\System32\drivers\etc)
+
 ```posh
 User-MacBook-Pro niffler % vi /etc/hosts
 ```

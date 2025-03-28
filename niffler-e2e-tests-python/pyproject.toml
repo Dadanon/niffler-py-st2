@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+
+markers = [
+    "active: only tests with this marker should be running",
+    "single: to test only one thing"
+]

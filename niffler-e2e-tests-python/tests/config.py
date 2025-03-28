@@ -1,16 +1,13 @@
 import os
 import random
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 
 import dotenv
-from playwright.sync_api import Page
 
 dotenv.load_dotenv()
 
-
-NIFFLER_FRONTEND_URL = os.getenv("NIFFLER_FRONTEND_URL")
-NIFFLER_AUTH_URL = os.getenv("NIFFLER_AUTH_URL")
 
 # INFO: block below is just for simplicity
 MIN_AMOUNT: int = 1
@@ -30,13 +27,10 @@ def get_random_date() -> datetime:
     return MIN_DATE + timedelta(seconds=random_delta_add_time)
 
 
-class NifflerUser:
+@dataclass
+class User:
     username: str
     password: str
-
-    def __init__(self, username: str, password: str):
-        self.username = username
-        self.password = password
 
 
 class Currency(Enum):
@@ -58,23 +52,18 @@ class Currency(Enum):
     }
 
 
-class NifflerSpend:
+@dataclass
+class Spend:
     amount: float
     currency: Currency
     category: str
     date: str
     description: str
 
-    def __init__(self, amount: float, currency: Currency, category: str, date: str, description: str):
-        self.amount = amount
-        self.currency = currency
-        self.category = category
-        self.date = date
-        self.description = description
+
+class Settings:
+    FRONTEND_URL = os.getenv('NIFFLER_FRONTEND_URL')
+    AUTH_URL = os.getenv('NIFFLER_AUTH_URL')
 
 
-def login_with_user(page: Page, user: NifflerUser):
-    login_field, password_field = page.get_by_label('Username'), page.get_by_label('Password')
-    login_field.fill(user.username)
-    password_field.fill(user.password)
-    page.get_by_role('button').get_by_text('Log in').click()
+settings = Settings()

@@ -1,3 +1,5 @@
+import random
+
 import pytest
 from string import ascii_lowercase
 
@@ -10,7 +12,7 @@ from .pages import *
 @pytest.fixture
 def user():
     def _user(username_length: int = 10, password_length: int = 10):
-        user: User = User(
+        user: UserCreate = UserCreate(
             username=''.join(random.choice(ascii_lowercase) for _ in range(username_length)),
             password=''.join(random.choice(ascii_lowercase) for _ in range(password_length))
         )
@@ -51,8 +53,7 @@ def page(browser):
 
 
 # Advanced fixtures and also page fixtures
-
-@pytest.fixture
+@pytest.fixture(scope='session')
 def registered_user(page, user):
     def _registered_user() -> User:
         login_page = LoginPage(page)

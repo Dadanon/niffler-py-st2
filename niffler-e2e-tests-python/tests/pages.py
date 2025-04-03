@@ -525,6 +525,7 @@ class AllPeoplePage(BasePage):
     def get_corresponding_user(self, username: str) -> Locator:
         """Получить пользователя с username для приглашения"""
         if len(self.people_list) == 0:
+            self.page.screenshot(path='1.png')
             raise AssertionError(f'People list is empty')
 
         self.search_field.fill(username)

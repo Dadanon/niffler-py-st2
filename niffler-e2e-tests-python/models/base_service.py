@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 from sqlalchemy import Engine
 from sqlmodel import create_engine
 

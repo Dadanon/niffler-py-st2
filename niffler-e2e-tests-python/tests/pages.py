@@ -2,7 +2,8 @@ import re
 from typing import List
 
 from playwright.sync_api import Page, Locator, expect
-from .config import *
+from ..config import *
+from ..models.user import UserCreate
 
 
 @dataclass
@@ -91,7 +92,7 @@ class RegistrationPage(BasePage):
         self.confirm_password_field.fill(user.password)
         self.signup_button.click()
 
-    def register_user(self, user: User) -> LoginPage:
+    def register_user(self, user: UserCreate) -> LoginPage:
         self.arrange_register_user(user)
         sign_in_button: Locator = self.page.locator('a[class="form_sign-in"]')
         sign_in_button.wait_for()

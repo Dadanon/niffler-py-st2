@@ -64,6 +64,7 @@ class Spend:
 class Settings:
     FRONTEND_URL: str = os.getenv('NIFFLER_FRONTEND_URL')
     AUTH_URL: str = os.getenv('NIFFLER_AUTH_URL')
+    REGISTRATION_URL = os.getenv('NIFFLER_REGISTRATION_URL')
     AUTH_DB_URL: str = os.getenv('NIFFLER_AUTH_DB_URL')
     CURRENCY_DB_URL: str = os.getenv('NIFFLER_CURRENCY_DB_URL')
     SPEND_DB_URL: str = os.getenv('NIFFLER_SPEND_DB_URL')

@@ -4,7 +4,7 @@ import pytest
 from playwright.sync_api import expect
 
 
-@pytest.mark.active
+@pytest.mark.single
 def test_login_error(login_page, user):
     """
     Try to login with unregistered credentials and get error
@@ -30,7 +30,10 @@ def test_register_success(registration_page, user):
     new_registration_page = registration_page()
 
     # Act
-    new_registration_page.register_user(new_user)
+    new_registration_page.arrange_register_user(new_user)
+
+    # Assert
+    expect(new_registration_page.page).to_have_url(re.compile('login'))
 
 
 @pytest.mark.active

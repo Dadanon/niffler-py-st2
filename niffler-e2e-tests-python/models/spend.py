@@ -3,7 +3,7 @@ from sqlmodel import SQLModel, Field
 
 
 class Spend(SQLModel, table=True):
-    id: str
+    id: str = Field(primary_key=True)
     username: str
     spend_date: date
     currency: str
@@ -12,9 +12,13 @@ class Spend(SQLModel, table=True):
     category_id: str
 
 
-class SpendAdd(SQLModel):
+class SpendCreate(SQLModel):
     amount: float
     currency: str
     category: str
     spend_date: str
     description: str = Field(default='')
+
+
+class SpendListed(SpendCreate):
+    pass

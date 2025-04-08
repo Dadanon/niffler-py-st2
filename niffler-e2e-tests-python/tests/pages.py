@@ -1,9 +1,11 @@
 import re
+from dataclasses import dataclass
 from typing import List
 
 from playwright.sync_api import Page, Locator, expect
-from ..config import *
-from ..models.user import UserCreate
+from config import *
+from models.user import UserCreate
+from models.spend import SpendListed, SpendCreate
 
 
 @dataclass
@@ -42,21 +44,16 @@ class LoginPage(BasePage):
         for element, name in elements:
             expect(element, f"{name} should be visible").to_be_visible()
 
-    def arrange_login(self, user: User) -> None:
+    def arrange_login(self, user: UserCreate) -> None:
         """Prepare to log in without expect"""
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.login_button.click()
 
-    def login(self, user: User) -> 'MainPage':
+    def login(self, user: UserCreate) -> 'MainPage':
         self.arrange_login(user)
         self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
-
-    def go_to_registration_page(self) -> 'RegistrationPage':
-        self.create_account_button.click()
-        self.page.wait_for_url(re.compile('register'))
-        return RegistrationPage(self.page)
 
 
 class RegistrationPage(BasePage):
@@ -67,6 +64,7 @@ class RegistrationPage(BasePage):
 
     def __init__(self, page: Page):
         super().__init__(page)
+        self.page.goto(settings.REGISTRATION_URL)
 
         self.username_field = self.page.locator('#username')
         self.password_field = self.page.locator('#password')
@@ -86,19 +84,11 @@ class RegistrationPage(BasePage):
         for element, name in elements:
             expect(element, f"{name} should be visible").to_be_visible()
 
-    def arrange_register_user(self, user: User) -> None:
+    def arrange_register_user(self, user: UserCreate) -> None:
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)
         self.confirm_password_field.fill(user.password)
         self.signup_button.click()
-
-    def register_user(self, user: UserCreate) -> LoginPage:
-        self.arrange_register_user(user)
-        sign_in_button: Locator = self.page.locator('a[class="form_sign-in"]')
-        sign_in_button.wait_for()
-        sign_in_button.click()
-        self.page.wait_for_url(re.compile('login'))
-        return LoginPage(self.page)
 
 
 class MainPage(BasePage):
@@ -119,16 +109,16 @@ class MainPage(BasePage):
         self.search_field = self.page.locator('input[aria-label="search"]')
         self.profile_menu = self.page.locator('ul[role="menu"]')
 
-    def get_nth_spend(self, index: int) -> Spend:
+    def get_nth_spend(self, index: int) -> SpendListed:
         nth_spend_cells: List[Locator] = self.get_spend_cells(index)
         amount, currency_str = nth_spend_cells[2].locator('span').text_content().strip().split(' ')
-        currency = next(cur for cur in list(Currency) if cur.value['sign'] == currency_str)
-        return Spend(
-            category=nth_spend_cells[1].locator('span').text_content(),
+        currency = next(cur for cur in list(CurrencyDict) if cur.value['sign'] == currency_str)
+        return SpendListed(
             amount=float(amount),
-            currency=Currency(currency),
-            description=nth_spend_cells[3].locator('span').text_content(),
-            date=nth_spend_cells[4].locator('span').text_content(),
+            currency=currency.value['value'],
+            category=nth_spend_cells[1].locator('span').text_content(),
+            spend_date=nth_spend_cells[4].locator('span').text_content(),
+            description=nth_spend_cells[3].locator('span').text_content()
         )
 
     def get_spend_cells(self, index: int) -> List[Locator]:
@@ -279,24 +269,19 @@ class NewSpendingPage(BasePage):
     def category_helper(self) -> Locator:
         return self.page.locator('#category + .input__helper-text')
 
-    def arrange_add_spend(self, spend: Spend) -> None:
+    def arrange_add_spend(self, spend: SpendCreate) -> None:
         self.amount_field.fill(str(spend.amount))
         self.currency_field.click()
-        self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency.value["value"]}"]').click()
+        self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency}"]').click()
         self.category_field.fill(spend.category)
         self.date_field.fill(spend.date)
         self.description_field.fill(spend.description)
         self.add_button.click()
 
-    def add_spend(self, spend: Spend) -> 'MainPage':
+    def add_spend(self, spend: SpendCreate) -> 'MainPage':
         self.arrange_add_spend(spend)
         self.page.wait_for_url(re.compile('main'))
         self.page.wait_for_timeout(1000)  # FIXME: как правильно дождаться страницы со списком трат?
-        return MainPage(self.page)
-
-    def cancel_add_spend(self) -> 'MainPage':
-        self.cancel_button.click()
-        self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
 
 
@@ -347,24 +332,19 @@ class EditSpendingPage(BasePage):
     def category_helper(self) -> Locator:
         return self.page.locator('#category + .input__helper-text')
 
-    def arrange_edit_spend(self, spend: Spend) -> None:
+    def arrange_edit_spend(self, spend: SpendCreate) -> None:
         self.amount_field.fill(str(spend.amount))
         self.currency_field.click()
-        self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency.value["value"]}"]').click()
+        self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency}"]').click()
         self.category_field.fill(spend.category)
         self.date_field.fill(spend.date)
         self.description_field.fill(spend.description)
         self.save_changes_button.click()
 
-    def edit_spend(self, spend: Spend) -> 'MainPage':
+    def edit_spend(self, spend: SpendCreate) -> 'MainPage':
         self.arrange_edit_spend(spend)
         self.page.wait_for_url(re.compile('main'))
         self.page.wait_for_timeout(1000)  # FIXME: как правильно дождаться страницы со списком трат?
-        return MainPage(self.page)
-
-    def cancel_edit_spend(self) -> 'MainPage':
-        self.cancel_button.click()
-        self.page.wait_for_url(re.compile('main'))
         return MainPage(self.page)
 
 
@@ -420,9 +400,7 @@ class FriendsPage(BasePage):
 
     def __init__(self, page: Page):
         super().__init__(page)
-
         self.search_field = self.page.locator('input[aria-label="search"]')
-
         self.check_elements()
 
     @property
@@ -471,10 +449,7 @@ class FriendsPage(BasePage):
         decline_button.click()
 
         decline_confirm_button: Locator = self.page.locator('div[role="dialog"] button:has-text("Decline")')
-
-        # INFO: should the string below be in page class? Answer me plz if there is a better way to handle it...
         expect(decline_confirm_button).to_be_visible()
-
         decline_confirm_button.click()
 
     def unfriend(self, username: str) -> None:
@@ -492,10 +467,7 @@ class FriendsPage(BasePage):
         unfriend_button.click()
 
         confirm_unfriend_button: Locator = self.page.locator('div[role="dialog"] button:has-text("Delete")')
-
-        # INFO: should the string below be in page class? Answer me plz if there is a better way to handle it...
         expect(confirm_unfriend_button).to_be_visible()
-
         confirm_unfriend_button.click()
 
 
@@ -505,9 +477,7 @@ class AllPeoplePage(BasePage):
 
     def __init__(self, page: Page):
         super().__init__(page)
-
         self.search_field = self.page.locator('input[aria-label="search"]')
-
         self.check_elements()
 
     @property
@@ -541,11 +511,6 @@ class AllPeoplePage(BasePage):
                 return user
 
         raise AssertionError(f'No such user with username {username} in people list')
-        # corresponding_user: Locator = next((user for user in self.people_list if user.locator('.MuiTypography-body1').text_content() == username), None)
-        # if corresponding_user is None:
-        #     raise AssertionError(f'No such user with username {username} in people list')
-        #
-        # return corresponding_user
 
     def send_invitation(self, username: str) -> None:
         """Отправить приглашение в друзья пользователю с username"""

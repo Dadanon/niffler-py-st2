@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.single
+@pytest.mark.active
 def test_add_friend(registered_user, login_page):
     # Arrange
     first_user = registered_user()

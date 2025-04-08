@@ -1,9 +1,11 @@
 from sqlmodel import Session, select, exists
 
-from ..config import settings
+from config import settings
 from .base_service import BaseService
-from .user import User
-from .friendship import Friendship
+from models.user import User
+from models.friendship import Friendship
+from models.spend import Spend
+from models.category import Category
 
 
 class UserService(BaseService):
@@ -14,8 +16,14 @@ class UserService(BaseService):
             return session.execute(stmt).scalar()
 
     def delete_user(self, username: str) -> str:
-        """Delete user from database if exists and return his username (for any purposes)"""
+        """Delete user from database if exists and return his username (for any purposes)."""
         with Session(self.engine) as session:
+            # INFO: we do not know anything about cascade delete rules in DB so we delete related entities by hand :)
+            # Remove all user spends
+            self.delete_user_spends(username)
+            # Remove all user categories
+            self.delete_user_categories(username)
+            # Finally remove user
             stmt = select(User).where(User.username == username)
             db_user: User | None = session.execute(stmt).first()
             if db_user is None:
@@ -23,6 +31,24 @@ class UserService(BaseService):
             session.delete(db_user)
             session.commit()
             return username
+
+    def delete_user_spends(self, username: str) -> None:
+        """Delete all user spends"""
+        with Session(self.engine) as session:
+            stmt = select(Spend).where(Spend.username == username)
+            db_spends = session.execute(stmt).all()
+            for db_spend in db_spends:
+                session.delete(db_spend)
+            session.commit()
+
+    def delete_user_categories(self, username: str) -> None:
+        """Delete all user spend categories"""
+        with Session(self.engine) as session:
+            stmt = select(Category).where(Category.username == username)
+            db_categories = session.execute(stmt).all()
+            for db_category in db_categories:
+                session.delete(db_category)
+            session.commit()
 
     def get_user_by_username(self, username: str) -> User:
         with Session(self.engine) as session:

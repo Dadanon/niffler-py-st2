@@ -3,10 +3,9 @@ from string import ascii_lowercase
 
 from playwright.sync_api import Playwright
 
-from ..config import settings
 from .pages import *
-from ..models.user import UserCreate
-from ..models.user_service import user_service
+from models.user import UserCreate
+from services.user_service import user_service
 
 
 # Mock data
@@ -26,11 +25,11 @@ def user():
 def spend():
     """Get mock spend data"""
     def _spend():
-        spend: Spend = Spend(
+        spend: SpendCreate = SpendCreate(
             amount=round(random.uniform(MIN_AMOUNT, MAX_AMOUNT), 2),
-            currency=random.choice(list(Currency)),
+            currency=random.choice([currency.value['value'] for currency in list(CurrencyDict)]),
             category=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
-            date=get_random_date().strftime(SPEND_CREATE_DATE_FORMAT),
+            spend_date=get_random_date().strftime(SPEND_CREATE_DATE_FORMAT),
             description=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
         )
         return spend
@@ -71,8 +70,9 @@ def registered_user(browser):
         page.locator('#password').fill(user_to_register.password)
         page.locator('#passwordSubmit').fill(user_to_register.password)
         page.locator('button[type="submit"]').click()
+        expect(page.locator('a.form_sign-in')).to_be_visible()
         yield user_to_register
-    # Delete this user
+    # Delete this user with related entities
     user_service.delete_user(user_to_register.username)
 
 
@@ -84,19 +84,17 @@ def login_page(page):
 
 
 @pytest.fixture
-def registration_page(login_page):
+def registration_page(page):
     def _registration_page() -> RegistrationPage:
-        new_login_page = login_page()
-        return new_login_page.go_to_registration_page()
+        return RegistrationPage(page)
     yield _registration_page
 
 
 @pytest.fixture
 def main_page(login_page, registered_user):
     def _main_page() -> MainPage:
-        new_user = registered_user()
         new_login_page = login_page()
-        return new_login_page.login(new_user)
+        return new_login_page.login(registered_user)
     yield _main_page
 
 

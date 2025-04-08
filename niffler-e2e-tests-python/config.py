@@ -1,6 +1,5 @@
 import os
 import random
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -27,13 +26,7 @@ def get_random_date() -> datetime:
     return MIN_DATE + timedelta(seconds=random_delta_add_time)
 
 
-@dataclass
-class User:
-    username: str
-    password: str
-
-
-class Currency(Enum):
+class CurrencyDict(Enum):
     RUB = {
         'value': 'RUB',
         'sign': '₽'
@@ -50,15 +43,6 @@ class Currency(Enum):
         'value': 'USD',
         'sign': '$'
     }
-
-
-@dataclass
-class Spend:
-    amount: float
-    currency: Currency
-    category: str
-    date: str
-    description: str
 
 
 class Settings:

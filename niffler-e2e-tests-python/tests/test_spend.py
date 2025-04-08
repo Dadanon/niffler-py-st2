@@ -2,8 +2,9 @@ import re
 
 import pytest
 from playwright.sync_api import expect
+
 from .conftest import NewSpendingPage
-from .config import *
+from config import *
 
 
 @pytest.mark.active

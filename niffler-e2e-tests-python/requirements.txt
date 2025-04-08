@@ -3,3 +3,4 @@ playwright
 pytest-playwright
 python-dotenv
 sqlmodel
+psycopg2

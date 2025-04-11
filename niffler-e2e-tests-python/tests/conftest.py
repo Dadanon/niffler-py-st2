@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from string import ascii_lowercase
 
@@ -63,15 +65,20 @@ def registered_user(browser):
         username='mar4ello',
         password='pAsSwOrD'
     )
-    if user_service.user_exists(user_to_register.username):
-        yield user_to_register
-    else:
+    user_service.delete_user(user_to_register.username)
+    time.sleep(1)
+
+    if not user_service.user_exists(user_to_register.username):
+        print(f'User with {user_to_register.username} doesnt exist, continue...')
         page.locator('#username').fill(user_to_register.username)
         page.locator('#password').fill(user_to_register.password)
         page.locator('#passwordSubmit').fill(user_to_register.password)
         page.locator('button[type="submit"]').click()
-        expect(page.locator('a.form_sign-in')).to_be_visible()
-        yield user_to_register
+        page.screenshot(path='0.png')
+        print('Try to wait wor sign in button...')
+        page.locator('a.form_sign-in').wait_for()
+
+    yield user_to_register
     # Delete this user with related entities
     user_service.delete_user(user_to_register.username)
 

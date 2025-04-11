@@ -84,6 +84,10 @@ class RegistrationPage(BasePage):
         for element, name in elements:
             expect(element, f"{name} should be visible").to_be_visible()
 
+    @property
+    def signin_button(self) -> Locator:
+        return self.page.locator('a.form_sign-in')
+
     def arrange_register_user(self, user: UserCreate) -> None:
         self.username_field.fill(user.username)
         self.password_field.fill(user.password)

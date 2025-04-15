@@ -65,18 +65,12 @@ def registered_user(browser):
         username='mar4ello',
         password='pAsSwOrD'
     )
-    user_service.delete_user(user_to_register.username)
-    time.sleep(1)
 
-    if not user_service.user_exists(user_to_register.username):
-        print(f'User with {user_to_register.username} doesnt exist, continue...')
-        page.locator('#username').fill(user_to_register.username)
-        page.locator('#password').fill(user_to_register.password)
-        page.locator('#passwordSubmit').fill(user_to_register.password)
-        page.locator('button[type="submit"]').click()
-        page.screenshot(path='0.png')
-        print('Try to wait wor sign in button...')
-        page.locator('a.form_sign-in').wait_for()
+    print(f'User with {user_to_register.username} doesnt exist, continue...')
+    page.locator('#username').fill(user_to_register.username)
+    page.locator('#password').fill(user_to_register.password)
+    page.locator('#passwordSubmit').fill(user_to_register.password)
+    page.locator('button[type="submit"]').click()
 
     yield user_to_register
     # Delete this user with related entities

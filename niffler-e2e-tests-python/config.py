@@ -13,7 +13,7 @@ MIN_AMOUNT: int = 1
 MAX_AMOUNT: int = 300
 CATEGORY_NAME_LENGTH: int = 10
 MIN_DATE: datetime = datetime(year=2020, month=1, day=1)
-MAX_DATE: datetime = datetime(year=2025, month=12, day=31)
+MAX_DATE: datetime = datetime(year=2024, month=12, day=31)
 DESCRIPTION_LENGTH: int = 20
 SPEND_CREATE_DATE_FORMAT: str = '%m/%d/%Y'
 SPEND_SHOW_DATE_FORMAT: str = '%b %d, %Y'
@@ -53,6 +53,7 @@ class Settings:
     CURRENCY_DB_URL: str = os.getenv('NIFFLER_CURRENCY_DB_URL')
     SPEND_DB_URL: str = os.getenv('NIFFLER_SPEND_DB_URL')
     USERDATA_DB_URL: str = os.getenv('NIFFLER_USERDATA_DB_URL')
+    REGISTERED_USERNAME: str = os.getenv('REGISTERED_USERNAME')
 
 
 settings = Settings()

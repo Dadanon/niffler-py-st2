@@ -6,7 +6,7 @@ from playwright.sync_api import expect
 from services.user_service import user_service
 
 
-@pytest.mark.single
+@pytest.mark.active
 def test_login_error(login_page, user):
     """Try to login with unregistered credentials and get error"""
     # Arrange
@@ -20,7 +20,7 @@ def test_login_error(login_page, user):
     expect(new_login_page.page).to_have_url(re.compile('error'))
 
 
-@pytest.mark.single
+@pytest.mark.active
 def test_register_success(registration_page, user):
     """Try to register successfully"""
     # Arrange
@@ -36,7 +36,7 @@ def test_register_success(registration_page, user):
     assert user_service.user_exists(new_user.username) is True
 
 
-@pytest.mark.single
+@pytest.mark.active
 def test_register_error(registration_page, user):
     """Try to register unsuccessfully"""
     # Arrange
@@ -50,7 +50,7 @@ def test_register_error(registration_page, user):
     expect(new_registration_page.signin_button).not_to_be_visible()
 
 
-@pytest.mark.single
+@pytest.mark.active
 def test_login_success(login_page, registered_user):
     """Try to login successfully with registered credentials"""
     # Arrange

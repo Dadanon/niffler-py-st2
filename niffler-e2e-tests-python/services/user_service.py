@@ -11,10 +11,6 @@ class UserService(BaseService):
     def user_exists(self, username: str) -> bool:
         """A fast way to check if user exists in database without fetching the entire model"""
         with Session(self.engine) as session:
-            # stmt_first = select(User)
-            # result_one = session.execute(stmt_first).all()
-            # print(f'Users length: {len(result_one)}, result: {result_one}')
-            # print([User.model_validate(user).username + '\n' for user in result_one])
             stmt = select(exists().where(User.username == username))
             result = session.execute(stmt).scalar()
             print(f'User with username {username} exists: {result}')

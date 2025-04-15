@@ -278,14 +278,14 @@ class NewSpendingPage(BasePage):
         self.currency_field.click()
         self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency}"]').click()
         self.category_field.fill(spend.category)
-        self.date_field.fill(spend.date)
+        self.date_field.fill(spend.spend_date)
         self.description_field.fill(spend.description)
         self.add_button.click()
 
     def add_spend(self, spend: SpendCreate) -> 'MainPage':
         self.arrange_add_spend(spend)
-        self.page.wait_for_url(re.compile('main'))
-        self.page.wait_for_timeout(1000)  # FIXME: как правильно дождаться страницы со списком трат?
+        self.page.wait_for_selector('table[aria-labelledby="tableTitle"]')
+        self.page.wait_for_timeout(500)
         return MainPage(self.page)
 
 
@@ -341,7 +341,7 @@ class EditSpendingPage(BasePage):
         self.currency_field.click()
         self.page.locator(f'ul[role="listbox"] >> li[data-value="{spend.currency}"]').click()
         self.category_field.fill(spend.category)
-        self.date_field.fill(spend.date)
+        self.date_field.fill(spend.spend_date)
         self.description_field.fill(spend.description)
         self.save_changes_button.click()
 

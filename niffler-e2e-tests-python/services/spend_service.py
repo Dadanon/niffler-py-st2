@@ -1,3 +1,6 @@
+from typing import Sequence
+
+from sqlalchemy import func
 from sqlmodel import Session, exists, select
 
 from config import settings
@@ -7,11 +10,28 @@ from models.spend import Spend
 
 
 class SpendService(BaseService):
+    def get_total_count(self) -> int:
+        """Получить общее число трат"""
+        with Session(self.engine) as session:
+            stmt = select(func.count(Spend.id))
+            return session.exec(stmt).first()
+
+    def get_user_spends(self, username: str) -> Sequence[Spend]:
+        with Session(self.engine) as session:
+            stmt = select(Spend).where(Spend.username == username)
+            return session.exec(stmt).all()
+
+    def get_user_spend_count(self, username: str) -> int:
+        """Получить количество трат для конкретного юзера"""
+        with Session(self.engine) as session:
+            stmt = select(func.count(Spend.id)).where(Spend.username == username)
+            return session.exec(stmt).first()
+
     def spend_exists(self, spend_id: str) -> bool:
         """A fast way to check if spend exists in database without fetching the entire model"""
         with Session(self.engine) as session:
-            stmt = exists().where(Spend.id == spend_id)
-            return session.execute(stmt).scalar()
+            stmt = select(exists().where(Spend.id == spend_id))
+            return session.exec(stmt).first()
 
     def delete_user_spends(self, username: str) -> None:
         """Delete all user spends"""

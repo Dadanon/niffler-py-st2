@@ -56,13 +56,13 @@ def page(browser):
 
 
 # Advanced fixtures and also page fixtures
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='session', autouse=True)
 def registered_user(browser):
     """Create a single registered user for all operations except registration test"""
     page = browser.new_page()
     page.goto(settings.REGISTRATION_URL)
     user_to_register: UserCreate = UserCreate(
-        username='mar4ello',
+        username=settings.REGISTERED_USERNAME,
         password='pAsSwOrD'
     )
 

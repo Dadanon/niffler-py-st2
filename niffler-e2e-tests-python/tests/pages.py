@@ -499,6 +499,7 @@ class AllPeoplePage(BasePage):
 
     def get_corresponding_user(self, username: str) -> Locator:
         """Получить пользователя с username для приглашения"""
+        print(f'People list len: {len(self.people_list)}')
         if len(self.people_list) == 0:
             self.page.screenshot(path='1.png')
             raise AssertionError(f'People list is empty')
@@ -506,6 +507,7 @@ class AllPeoplePage(BasePage):
         self.search_field.fill(username)
         self.page.keyboard.press('Enter')
         self.page.wait_for_load_state('networkidle')
+        self.page.screenshot(path='after_enter.png')
 
         print(f'People length: {len(self.people_list)}')
 
@@ -518,6 +520,7 @@ class AllPeoplePage(BasePage):
 
     def send_invitation(self, username: str) -> None:
         """Отправить приглашение в друзья пользователю с username"""
+        self.page.screenshot(path='bf_send_inv.png')
         corresponding_user: Locator = self.get_corresponding_user(username)
         add_friend_button: Locator = corresponding_user.locator('button:has-text("Add friend")')
         add_friend_button.click()

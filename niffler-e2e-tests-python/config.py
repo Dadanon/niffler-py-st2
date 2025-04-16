@@ -54,6 +54,7 @@ class Settings:
     SPEND_DB_URL: str = os.getenv('NIFFLER_SPEND_DB_URL')
     USERDATA_DB_URL: str = os.getenv('NIFFLER_USERDATA_DB_URL')
     REGISTERED_USERNAME: str = os.getenv('REGISTERED_USERNAME')
+    FRIEND_USERNAME = os.getenv('FRIEND_USERNAME')
 
 
 settings = Settings()

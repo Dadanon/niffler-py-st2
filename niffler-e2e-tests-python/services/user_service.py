@@ -1,4 +1,4 @@
-from sqlmodel import Session, select, exists, and_
+from sqlmodel import Session, select, exists, and_, or_
 
 from config import settings
 from .base_service import BaseService
@@ -16,6 +16,15 @@ class UserService(BaseService):
             print(f'User with username {username} exists: {result}')
             return result
 
+    def get_user_id_by_username(self, username: str) -> str:
+        """Получить UUID пользователя по его нику"""
+        with Session(self.engine) as session:
+            stmt = select(User.id).where(User.username == username)
+            user_id = session.exec(stmt).first()
+            if not user_id:
+                raise ValueError(f'User with username {username} does not have UUID!!!')
+            return user_id
+
     def delete_user(self, username: str) -> str:
         """Delete user from database if exists and return his username (for any purposes)."""
         with Session(self.engine) as session:
@@ -29,10 +38,25 @@ class UserService(BaseService):
             spend_service.delete_user_spends(username)
             # Remove all user categories
             spend_service.delete_user_categories(username)
+            # Remove friendships
+            self.delete_user_friendships(db_user.id)
             # Finally remove user
             session.delete(db_user)
             session.commit()
             return username
+
+    def delete_user_friendships(self, user_id: str) -> None:
+        """Удалить все имеющиеся дружбы и запросы в друзья"""
+        with Session(self.engine) as session:
+            stmt = select(Friendship).where(or_(
+                Friendship.requester_id == user_id,
+                Friendship.addressee_id == user_id
+            ))
+            friendships = session.execute(stmt).all()
+            print(f'Friendships: {friendships}')
+            for friendship in session.exec(stmt).all():
+                session.delete(friendship)
+            session.commit()
 
     def get_user_by_username(self, username: str) -> User:
         with Session(self.engine) as session:
@@ -50,12 +74,12 @@ class UserService(BaseService):
             addressee_id: str | None = session.exec(addressee_id_stmt).first()
             if addressee_id is None or requester_id is None:
                 raise ValueError(f'No addressee with username {addressee_username} or requester with username {requester_username}')
-            friendship_stmt = select(Friendship).where(and_(
+            friendship_stmt = select(exists().where(and_(
                 Friendship.requester_id == requester_id,
                 Friendship.addressee_id == addressee_id,
                 Friendship.status == 'ACCEPTED'
-            )).exists()
-            return session.exec(friendship_stmt).scalar()
+            )))
+            return session.exec(friendship_stmt).first()
 
 
 user_service = UserService(settings.USERDATA_DB_URL)

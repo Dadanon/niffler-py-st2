@@ -34,6 +34,8 @@ def test_register_success(registration_page, user):
     expect(new_registration_page.signin_button).to_be_visible()
     # DB assert
     assert user_service.user_exists(new_user.username) is True
+    # Remove user from db
+    user_service.delete_user(new_user.username)
 
 
 @pytest.mark.active
@@ -48,6 +50,8 @@ def test_register_error(registration_page, user):
 
     # Assert
     expect(new_registration_page.signin_button).not_to_be_visible()
+    # Check if user is not in db
+    assert user_service.user_exists(new_user.username) is False
 
 
 @pytest.mark.active

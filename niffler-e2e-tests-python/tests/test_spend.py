@@ -63,6 +63,8 @@ def test_add_spending_success(new_spending_page, spend):
     assert first_spend.spend_date == datetime.strptime(new_spend.spend_date, SPEND_CREATE_DATE_FORMAT).strftime(SPEND_SHOW_DATE_FORMAT)
     # Проверяем, что в БД появились записи
     assert spend_service.get_user_spend_count(settings.REGISTERED_USERNAME) == 1
+    # Remove user spends from db
+    spend_service.delete_user_spends(settings.REGISTERED_USERNAME)
 
 
 @pytest.mark.active

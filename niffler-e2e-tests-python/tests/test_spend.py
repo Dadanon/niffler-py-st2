@@ -86,9 +86,8 @@ def test_add_category(profile_page, category):
     spend_service.delete_category(new_category)
 
 
-@pytest.mark.single
+@pytest.mark.active
 def test_archive_category(profile_page, category):
-    # TODO: доделать
     # Arrange
     new_profile_page = profile_page()
     new_category = category()

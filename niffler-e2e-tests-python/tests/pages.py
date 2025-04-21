@@ -374,7 +374,7 @@ class ProfilePage(BasePage):
 
     @property
     def categories_list(self) -> List[Locator]:
-        return self.page.locator('.css-17u3xlq span.css-14vsv3w').all()
+        return self.page.locator('.css-17u3xlq').all()[2:]
 
     @property
     def add_category_message(self) -> Locator:
@@ -382,11 +382,11 @@ class ProfilePage(BasePage):
 
     def has_category(self, category_name: str) -> bool:
         """Проверить, есть ли такая категория в списке"""
-        category = next((category for category in self.categories_list if category.text_content() == category_name), None)
+        category = next((category for category in self.categories_list if category.locator('span.css-14vsv3w').text_content() == category_name), None)
         return category is not None
 
     def get_category(self, category_name: str) -> Locator | None:
-        return next((category for category in self.categories_list if category.text_content() == category_name), None)
+        return next((category for category in self.categories_list if category.locator('span.css-14vsv3w').text_content() == category_name), None)
 
     def check_elements(self):
         elements = [
@@ -404,6 +404,10 @@ class ProfilePage(BasePage):
         self.name_field.fill(name)
         self.save_changes_button.click()
 
+    @property
+    def confirm_archive_button(self) -> Locator:
+        return self.page.locator('button:has-text("Archive")')
+
     def add_category(self, category: str) -> None:
         if not self.has_category(category):
             self.new_category_field.fill(category)
@@ -413,11 +417,10 @@ class ProfilePage(BasePage):
     def archive_category(self, category: str) -> None:
         if self.has_category(category):
             current_category = self.get_category(category)
-            self.page.screenshot(path='trt.png')
             archive_button = current_category.locator('button[aria-label="Archive category"]')
             archive_button.click()
-            self.page.locator('button:has-text("Archive")').click()
-            self.page.wait_for_load_state(state='networkidle')
+            self.confirm_archive_button.click()
+            expect(self.confirm_archive_button).not_to_be_visible()
 
 
 class FriendsPage(BasePage):

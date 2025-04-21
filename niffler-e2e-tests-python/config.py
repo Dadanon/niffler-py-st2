@@ -1,6 +1,5 @@
 import os
 import random
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -14,7 +13,7 @@ MIN_AMOUNT: int = 1
 MAX_AMOUNT: int = 300
 CATEGORY_NAME_LENGTH: int = 10
 MIN_DATE: datetime = datetime(year=2020, month=1, day=1)
-MAX_DATE: datetime = datetime(year=2025, month=12, day=31)
+MAX_DATE: datetime = datetime(year=2024, month=12, day=31)
 DESCRIPTION_LENGTH: int = 20
 SPEND_CREATE_DATE_FORMAT: str = '%m/%d/%Y'
 SPEND_SHOW_DATE_FORMAT: str = '%b %d, %Y'
@@ -27,13 +26,7 @@ def get_random_date() -> datetime:
     return MIN_DATE + timedelta(seconds=random_delta_add_time)
 
 
-@dataclass
-class User:
-    username: str
-    password: str
-
-
-class Currency(Enum):
+class CurrencyDict(Enum):
     RUB = {
         'value': 'RUB',
         'sign': '₽'
@@ -52,18 +45,16 @@ class Currency(Enum):
     }
 
 
-@dataclass
-class Spend:
-    amount: float
-    currency: Currency
-    category: str
-    date: str
-    description: str
-
-
 class Settings:
-    FRONTEND_URL = os.getenv('NIFFLER_FRONTEND_URL')
-    AUTH_URL = os.getenv('NIFFLER_AUTH_URL')
+    FRONTEND_URL: str = os.getenv('NIFFLER_FRONTEND_URL')
+    AUTH_URL: str = os.getenv('NIFFLER_AUTH_URL')
+    REGISTRATION_URL = os.getenv('NIFFLER_REGISTRATION_URL')
+    AUTH_DB_URL: str = os.getenv('NIFFLER_AUTH_DB_URL')
+    CURRENCY_DB_URL: str = os.getenv('NIFFLER_CURRENCY_DB_URL')
+    SPEND_DB_URL: str = os.getenv('NIFFLER_SPEND_DB_URL')
+    USERDATA_DB_URL: str = os.getenv('NIFFLER_USERDATA_DB_URL')
+    REGISTERED_USERNAME: str = os.getenv('REGISTERED_USERNAME')
+    FRIEND_USERNAME = os.getenv('FRIEND_USERNAME')
 
 
 settings = Settings()

@@ -40,8 +40,3 @@ out/
 
 ### gRPC generated files ###
 /niffler-grpc-common/src/generated/**
-
-# Python
-env
-.env
-*.pyc

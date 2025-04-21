@@ -374,7 +374,19 @@ class ProfilePage(BasePage):
 
     @property
     def categories_list(self) -> List[Locator]:
-        return self.page.locator('.css-17u3xlq').all()
+        return self.page.locator('.css-17u3xlq span.css-14vsv3w').all()
+
+    @property
+    def add_category_message(self) -> Locator:
+        return self.page.locator('div[role="alert"]:has-text("You\'ve added new category")')
+
+    def has_category(self, category_name: str) -> bool:
+        """Проверить, есть ли такая категория в списке"""
+        category = next((category for category in self.categories_list if category.text_content() == category_name), None)
+        return category is not None
+
+    def get_category(self, category_name: str) -> Locator | None:
+        return next((category for category in self.categories_list if category.text_content() == category_name), None)
 
     def check_elements(self):
         elements = [
@@ -393,8 +405,19 @@ class ProfilePage(BasePage):
         self.save_changes_button.click()
 
     def add_category(self, category: str) -> None:
-        self.new_category_field.fill(category)
-        self.page.keyboard.press('Enter')
+        if not self.has_category(category):
+            self.new_category_field.fill(category)
+            self.page.keyboard.press('Enter')
+            expect(self.add_category_message).to_be_visible()
+
+    def archive_category(self, category: str) -> None:
+        if self.has_category(category):
+            current_category = self.get_category(category)
+            self.page.screenshot(path='trt.png')
+            archive_button = current_category.locator('button[aria-label="Archive category"]')
+            archive_button.click()
+            self.page.locator('button:has-text("Archive")').click()
+            self.page.wait_for_load_state(state='networkidle')
 
 
 class FriendsPage(BasePage):

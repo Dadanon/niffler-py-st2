@@ -68,6 +68,44 @@ def test_add_spending_success(new_spending_page, spend):
 
 
 @pytest.mark.active
+def test_add_category(profile_page, category):
+    # Arrange
+    new_profile_page = profile_page()
+    new_category = category()
+
+    # Act
+    new_profile_page.add_category(new_category)
+
+    # Assert
+    # new_profile_page.page.screenshot(path='after_add.png')
+    assert new_profile_page.has_category(new_category) is True
+    # Assert in database
+    assert spend_service.category_exists(new_category) is True
+
+    # Remove from db
+    spend_service.delete_category(new_category)
+
+
+@pytest.mark.single
+def test_archive_category(profile_page, category):
+    # TODO: доделать
+    # Arrange
+    new_profile_page = profile_page()
+    new_category = category()
+    new_profile_page.add_category(new_category)
+
+    # Act
+    new_profile_page.archive_category(new_category)
+
+    # Assert
+    assert new_profile_page.has_category(new_category) is False
+    assert spend_service.is_archived(new_category) is True
+
+    # Remove from db
+    spend_service.delete_category(new_category)
+
+
+@pytest.mark.active
 def test_delete_spend(new_spending_page, spend):
     # Arrange
     spending_page: NewSpendingPage = new_spending_page()

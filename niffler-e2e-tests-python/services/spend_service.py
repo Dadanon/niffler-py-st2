@@ -33,6 +33,12 @@ class SpendService(BaseService):
             stmt = select(exists().where(Spend.id == spend_id))
             return session.exec(stmt).first()
 
+    def category_exists(self, category_name: str) -> bool:
+        """A fast way to check if category exists in database by unique name"""
+        with Session(self.engine) as session:
+            stmt = select(exists().where(Category.name == category_name))
+            return session.exec(stmt).first()
+
     def delete_user_spends(self, username: str) -> None:
         """Delete all user spends"""
         with Session(self.engine) as session:
@@ -40,7 +46,26 @@ class SpendService(BaseService):
             db_spends = session.exec(stmt).all()
             for db_spend in db_spends:
                 session.delete(db_spend)
+            # Delete categories
+            category_stmt = select(Category).where(Category.username == username)
+            user_categories = session.exec(category_stmt).all()
+            for user_category in user_categories:
+                session.delete(user_category)
             session.commit()
+
+    def delete_category(self, category: str) -> None:
+        """Delete category from db"""
+        with Session(self.engine) as session:
+            stmt = select(Category).where(Category.name == category)
+            db_category = session.exec(stmt).first()
+            session.delete(db_category)
+            session.commit()
+
+    def is_archived(self, category: str) -> bool:
+        """Получить статус архивации категории"""
+        with Session(self.engine) as session:
+            stmt = select(Category.archived).where(Category.name == category)
+            return session.exec(stmt).first()
 
     def delete_user_categories(self, username: str) -> None:
         """Delete all user spend categories"""

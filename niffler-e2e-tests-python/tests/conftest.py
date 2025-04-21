@@ -23,14 +23,22 @@ def user():
 
 
 @pytest.fixture
-def spend():
+def category():
     """Get mock spend data"""
+    def _category():
+        return ''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)])
 
+    yield _category
+
+
+@pytest.fixture
+def spend(category):
+    """Get mock spend data"""
     def _spend():
         spend: SpendCreate = SpendCreate(
             amount=round(random.uniform(MIN_AMOUNT, MAX_AMOUNT), 2),
             currency=random.choice([currency.value['value'] for currency in list(CurrencyDict)]),
-            category=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
+            category=category(),
             spend_date=get_random_date().strftime(SPEND_CREATE_DATE_FORMAT),
             description=''.join([random.choice(ascii_lowercase) for _ in range(CATEGORY_NAME_LENGTH)]),
         )

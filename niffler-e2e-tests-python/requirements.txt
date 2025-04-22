@@ -4,3 +4,4 @@ pytest-playwright
 python-dotenv
 sqlmodel
 psycopg2
+allure-pytest

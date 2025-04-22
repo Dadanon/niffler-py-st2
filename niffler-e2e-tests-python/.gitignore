@@ -3,3 +3,4 @@ env
 .env
 *.pyc
 *.png
+allure-results
